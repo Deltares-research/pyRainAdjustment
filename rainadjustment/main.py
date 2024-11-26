@@ -17,10 +17,6 @@ import xarray as xr
 from xml_config_parser import parse_run_xml
 
 
-# List of stations to exclude, because they are not performing well
-# TODO: hard coded for now..
-stations_to_exclude = ["517139", "517144", "TA00016", "TA00098", "TA00313", "TA00391"]
-
 # ----------------------------------------------------------------------- #
 # Functions
 # ----------------------------------------------------------------------- #
@@ -64,13 +60,12 @@ def obtain_gauge_information(gauge_folder):
                 station_name = precip_gauges[station_index].station_id.values
                 station_value = precip_gauges[station_index].values
 
-                if str(station_name.tobytes().decode('utf-8').rstrip('\x00')) not in stations_to_exclude:
-                    # Append all the values to the output list
-                    obs_coords.append([float(station_lon), float(station_lat)])
-                    obs_names.append(
-                        str(station_name.tobytes().decode('utf-8').rstrip('\x00'))
-                        )
-                    obs_values.append(float(station_value))
+                # Append all the values to the output list
+                obs_coords.append([float(station_lon), float(station_lat)])
+                obs_names.append(
+                    str(station_name.tobytes().decode('utf-8').rstrip('\x00'))
+                    )
+                obs_values.append(float(station_value))
 
     return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
 
@@ -202,19 +197,20 @@ def check_adjustment_factor(
     # the adjusted_values
     factor_change = adjusted_values / original_values
 
-    # Make sure the factor is always a value greater than 1.0. So, for 
-    # values between 0 and 1, indicating a decrease of the value after
-    # adjustment, we return 1/factor.
-    factor_change_adj = np.where(
-        factor_change < 1.0, 1/factor_change, factor_change
-        )
-    # Where factor_change is larger than max_change_factor, we return
-    # to the original value.
-    checked_adjusted_values = np.where(
-        factor_change_adj > max_change_factor, 
-        original_values, 
-        adjusted_values
-        )
+    # Where factor_change is larger than max_change_factor or smaller
+    # than 1/max_change_factor, we adjust the original value with the
+    # provide max_change_factor (or 1/max_change_factor) to ensure
+    # that the correction is not blowing up.
+    conditions = [
+        factor_change > max_change_factor,
+        factor_change < (1 / max_change_factor),
+    ]
+    choices = [
+        original_values * max_change_factor,
+        original_values / max_change_factor
+    ]
+
+    checked_adjusted_values = np.select(conditions, choices, default=adjusted_values)
 
     return checked_adjusted_values
 
@@ -285,18 +281,6 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
             "standard_name": "adjustment_factor",
             "units": "-",
         })
-
-    # # Add grid mapping variable
-    # dataset["spatial_ref"] = xr.DataArray(0, attrs={
-    #         "grid_mapping_name": "latitude_longitude",
-    #         "semi_major_axis": 6378137.0,
-    #         "semi_minor_axis": 6356752.314245179,
-    #         "inverse_flattening": 298.257223563,
-    #         "reference_ellipsoid_name": "WGS 84",
-    #         "longitude_of_prime_meridian": 0.0,
-    #         "prime_meridian_name": "Greenwich",
-    #         "geographic_crs_name": "WGS 84",
-    #     })
 
     # Saving reprojected data
     output_dataset.to_netcdf(outfile)
