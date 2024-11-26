@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<moduleInstanceDescriptors xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/moduleInstanceDescriptors.xsd" version="1.0">
+	<moduleInstanceDescriptor id="Meteo_Rain_Gauge_Adjustment">
+		<updateModuleRunTimesOnCompletion>true</updateModuleRunTimesOnCompletion>
+	</moduleInstanceDescriptor>
+	<moduleInstanceDescriptor id="Meteo_Apply_Rain_Gauge_Adjustment">
+		<updateModuleRunTimesOnCompletion>true</updateModuleRunTimesOnCompletion>
+	</moduleInstanceDescriptor>
+</moduleInstanceDescriptors>

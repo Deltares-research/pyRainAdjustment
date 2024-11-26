@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformationModule version="1.0" xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/transformationModule.xsd">
+	<!--GFS forecasts plus GMP satellite -->
+	<variable>
+		<variableId>Rain_grid_original</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID_ORIG$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>P.obs</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="minute" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="hour" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>read only</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<variable>
+		<variableId>Rain_grid_adjusted</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>P.obs</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="minute" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="hour" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>add originals</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<variable>
+		<variableId>Adjustment_Factor_1h</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>F.adj</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="hour" multiplier="1" timeZone="GMT"/>
+			<relativeViewPeriod unit="hour" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>read only</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<variable>
+		<variableId>Adjustment_Factor_15min</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>F.adj</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="minute" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="hour" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>add originals</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<!--Transformations-->
+	<transformation id="Adjustment_factor_15min">
+		<disaggregation>
+			<instantaneous>
+				<inputVariable>
+					<variableId>Adjustment_Factor_1h</variableId>
+				</inputVariable>
+				<outputVariable>
+					<variableId>Adjustment_Factor_15min</variableId>
+				</outputVariable>
+			</instantaneous>
+		</disaggregation>
+	</transformation>
+	<transformation id="Adjust_rain_grid">
+		<user>
+			<simple>
+				<expression>Rain_grid_original*Adjustment_Factor_15min</expression>
+				<outputVariable>
+					<variableId>Rain_grid_adjusted</variableId>
+				</outputVariable>
+			</simple>
+		</user>
+	</transformation>
+</transformationModule>
