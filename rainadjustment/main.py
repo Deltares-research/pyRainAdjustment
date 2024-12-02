@@ -49,7 +49,7 @@ def obtain_gauge_information(gauge_folder):
     for gauge_file in gauges_files:
         if gauge_file.endswith("_Gauges.nc"):
             ds = xr.open_dataset(os.path.join(gauge_folder, gauge_file))
-            precip_gauges = ds.P[-1,:] #-1 to only get the last hour of values
+            precip_gauges = ds.P[-1, :]  # -1 to only get the last hour of values
 
             # Per station, store the location, station number and the rainfall 
             # value
@@ -64,7 +64,7 @@ def obtain_gauge_information(gauge_folder):
                 obs_coords.append([float(station_lon), float(station_lat)])
                 obs_names.append(
                     str(station_name.tobytes().decode('utf-8').rstrip('\x00'))
-                    )
+                )
                 obs_values.append(float(station_value))
 
     return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
@@ -116,7 +116,7 @@ def obtain_adjustment_method(config_xml, obs_coords, grid_coords):
     grid_coords: ndarray(float)
         List of floats containing the latitude and longitude values of the
         gridded rainfall as (lat, lon).
-    
+
 
     Returns
     ------
@@ -169,10 +169,10 @@ def obtain_adjustment_method(config_xml, obs_coords, grid_coords):
 
 
 def check_adjustment_factor(
-        adjusted_values, 
-        original_values, 
+        adjusted_values,
+        original_values,
         max_change_factor,
-        ):
+):
     """
     Parameters
     ----------
@@ -193,7 +193,7 @@ def check_adjustment_factor(
         grid coords. A check if sufficient valid observation-grid pairs
         are present has already taken place by wradlib.
     """
-    # Check the factor increase and decrease from the original_values to 
+    # Check the factor increase and decrease from the original_values to
     # the adjusted_values
     factor_change = adjusted_values / original_values
 
@@ -237,13 +237,13 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     # Make a dataset out of the array
     output_dataset = xr.Dataset(
         {
-        'adjustment_factor': (('time', 'y', 'x'), [adjustment_factor, adjustment_factor])
+            'adjustment_factor': (('time', 'y', 'x'), [adjustment_factor, adjustment_factor])
         },
         coords={
             'time': dataset_example["time"].values,
             'y': dataset_example["y"].values,
             'x': dataset_example["x"].values,
-            }
+        }
     )
 
     output_dataset["crs"] = dataset_example["crs"]
@@ -251,36 +251,36 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     # Make CF compliant and add global attributes
     output_dataset.attrs.update(
         {
-        "title": "Adjustment factor to correct gridded rainfall",
-        "institution": "Deltares", 
-        "source": " ",
-        "history": f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: Created",
-        "references": "The open-source Python tool wradlib was used for the adjustment factors",
-        "Conventions": "CF-1.8",
-        "projection": "EPSG:4326"
+            "title": "Adjustment factor to correct gridded rainfall",
+            "institution": "Deltares",
+            "source": " ",
+            "history": f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: Created",
+            "references": "The open-source Python tool wradlib was used for the adjustment factors",
+            "Conventions": "CF-1.8",
+            "projection": "EPSG:4326"
         }
     )
-    
+
     output_dataset["y"].attrs.update({
-            "axis": "Y",
-            "long_name": "latitude",
-            "standard_name": "latitude",
-            "units": "degrees_north"
-        })
-    
+        "axis": "Y",
+        "long_name": "latitude",
+        "standard_name": "latitude",
+        "units": "degrees_north"
+    })
+
     output_dataset["x"].attrs.update({
-                "axis": "X",
-                "long_name": "longitude",
-                "standard_name": "longitude",
-                "units": "degrees_east"
-            })
-                    
+        "axis": "X",
+        "long_name": "longitude",
+        "standard_name": "longitude",
+        "units": "degrees_east"
+    })
+
     # Add attributes to data variables
     output_dataset["adjustment_factor"].attrs.update({
-            "long_name": "Adjustment Factor",
-            "standard_name": "adjustment_factor",
-            "units": "-",
-        })
+        "long_name": "Adjustment Factor",
+        "standard_name": "adjustment_factor",
+        "units": "-",
+    })
 
     # Saving reprojected data
     output_dataset.to_netcdf(outfile)
@@ -313,14 +313,15 @@ def main():
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn =  os.path.join(work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt") 
+    logfn = os.path.join(work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt")
     logging.basicConfig(filename=logfn,
                         filemode='a',
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         datefmt='%H:%M:%S',
                         level=logging.INFO)
     logger = logging.getLogger()
-    logger.info("Arguments parsed:\n %s", global_args) 
+    logger.addHandler(logging.StreamHandler())
+    logger.info("Arguments parsed:\n %s", global_args)
 
     # If --xml_config is provided, parse it and prepare to use its values
     config_xml = {}
@@ -329,46 +330,51 @@ def main():
             config_xml = parse_run_xml(global_args.xml_config)
         except Exception as exception:
             logger.exception(exception, exc_info=True)
-            
-    # The actual work       
+
+    # The actual work
     try:
         # 1. Perform some checks
         adjustment_methods = ["MFB", "Additive", "Multiplicative", "Mixed"]
         if config_xml["adjustment_method"] not in adjustment_methods:
-            logger.error(f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}")
+            logger.error(
+                f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}")
             raise KeyError("Requested adjustment method not present")
-        # Make sure the threshold is always 0.0 when the adjustment_method 
+        # Make sure the threshold is always 0.0 when the adjustment_method
         # is Additive
         if config_xml["adjustment_method"] == "Additive" and config_xml["threshold"] > 0.0:
             config_xml["threshold"] = 0.0
-        
+            logger.warning(f"Config value for 'threshold' has been adjusted to '0' from "
+                           f"'{config_xml['threshold']}' because the chosen method is 'Additive'")
+
         # 2. Get the rain gauge information
         obs_coords, obs_names, obs_values = obtain_gauge_information(
             gauge_folder=os.path.join(work_dir, "input")
-            )
+        )
         logger.info("Rain gauge information read successfully.")
-        
+
         # 3. obtain gridded rainfall field
         grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
             grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
         )
-        logger.info("Gridded rainfall infromation read successfully.")
+        logger.info("Gridded rainfall information read successfully.")
 
         # 4. perform correction
         adjuster = obtain_adjustment_method(
-            config_xml=config_xml, 
-            obs_coords=obs_coords, 
+            config_xml=config_xml,
+            obs_coords=obs_coords,
             grid_coords=grid_coords
-            )
+        )
         adjusted_values = adjuster(obs_values, grid_values)
 
         # A final check to ensure that the adjustment has taken place.
         if np.array_equal(adjusted_values, grid_values):
             if np.isfinite(grid_values).any():
-                logger.warning("Adjustment has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned.")
+                logger.warning(
+                    "Adjustment has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned.")
                 adjusted_values_checked = adjusted_values * np.nan
             else:
-                logger.warning("Adjustment has not taken place. The gridded rainfall only contains nans. The original grid values will be returned.")
+                logger.warning(
+                    "Adjustment has not taken place. The gridded rainfall only contains nans. The original grid values will be returned.")
                 adjusted_values_checked = adjusted_values * np.nan
         else:
             logger.info("Adjustment has taken place successfully.")
@@ -379,7 +385,8 @@ def main():
                 max_change_factor=config_xml["max_change_factor"],
             )
             if np.array_equal(adjusted_values_checked, adjusted_values) == False:
-                logger.warning("Some of the adjusted values were above the set maximum adjustment factor.")
+                logger.warning("Some of the adjusted values were above the set maximum adjustment factor."
+                               f"and have been corrected to adhere to this maximum factor")
 
         # 5. Return corrected precipitation as a stored netCDF in the output folder
         adjustment_factor = adjusted_values_checked / grid_values
@@ -388,12 +395,12 @@ def main():
         adjustment_factor = np.nan_to_num(adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0)
         # Store it
         store_as_netcdf(
-            adjustment_factor=np.reshape(adjustment_factor, grid_shape), 
+            adjustment_factor=np.reshape(adjustment_factor, grid_shape),
             dataset_example=xr.open_dataset(
                 os.path.join(work_dir, "input", "gridded_rainfall.nc")
-                ),
+            ),
             outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc")
-            )
+        )
         logger.info("Adjusted gridded rainfall stored to a netCDF.")
 
     # pylint: disable=broad-exception-caught
