@@ -409,7 +409,7 @@ def main():
 
     end = time.perf_counter()
     logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
-    logger.info("Total adjustment workflow took %s minutes", ((end - start) / 60.0))
+    logger.info("Total adjustment workflow took %1.d minutes and %0.3f seconds", np.floor((end - start) / 60.0 ), ((end - start)%60))
 
 
 if __name__ == "__main__":
