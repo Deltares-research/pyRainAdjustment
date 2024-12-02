@@ -35,26 +35,37 @@ def parse_run_xml(xml_file):
         The working directory for the adjustment.
     adjustment_method: string
         The used adjustment method. Options are: MFB, Additive, Multiplicative,
-        Mixed.
+        Mixed. Defaults to None.
     nearest_cells_to_use: int
         The number of grid cells around (and including) the grid cell that
         corresponds to the rain gauge location. Typically 9 cells are used to
-        account for rain drift due to wind effects.
+        account for rain drift due to wind effects. Defaults to 9.
     statistical_function: str
         Statistical function to find the value of the nearest cells that is
         compared with the gauge value. Options are median, mean and best.
+        Defaults to median.
     min_gauges: int
         Minimum number of gauges that should be present in order to apply
-        the rain gauge adjustment method. Often, 5 gauges are used.
+        the rain gauge adjustment method. Often, 5 gauges are used. Defaults
+        to 5.
+    kriging_n_gauges_to_use: int
+        The maximum number of neighbouring gauges the kriging algorithm uses
+        per gauge. If the total number of gauges is smaller than this value,
+        the total number of gauges is used in pyRainAdjustment. Defaults to
+        12.
     threshold: float
         The threshold value used. If a gauge or grid cell is below this value,
         it is not used in the adjustment procedure. For the additive
-        adjustment_method, this should always be zero.
+        adjustment_method, this should always be zero. Defaults to 0.0.
     max_change_factor: float
         Maximum change (both increase and decrease) of the adjusted gridded
         rainfall per grid cell point. The values should be provided as float
         of the factor (e.g. 2.0 - max. two times smaller or bigger than
-        orginal).
+        orginal). Defaults to None.
+    interpolation_method: str
+        The interpolation method that should be used. An interpolation method
+        from https://docs.wradlib.org/en/latest/ipol.html should be provided.
+        Defaults to Idw (inverse distance weighting).
     """
     # Set the indir + filename of the used xml file
     input_xml = xml_file
@@ -73,6 +84,7 @@ def parse_run_xml(xml_file):
     kriging_n_gauges_to_use = 12
     adjustment_method = None
     statistical_function = "median"
+    interpolation_method = "Idw"
 
     # Get int properties
     properties = doc.getElementsByTagName("float")
@@ -99,6 +111,8 @@ def parse_run_xml(xml_file):
             adjustment_method = prop.getAttribute("value")
         if prop.attributes["key"].value == "statistical_function":
             statistical_function = prop.getAttribute("value")
+        if prop.attributes["key"].value == "interpolation_method":
+            interpolation_method = prop.getAttribute("value")
 
     output_dict = {
         "work_dir": work_dir,
@@ -109,6 +123,7 @@ def parse_run_xml(xml_file):
         "kriging_n_gauges_to_use": kriging_n_gauges_to_use,
         "adjustment_method": adjustment_method,
         "statistical_function": statistical_function,
+        "interpolation_method": interpolation_method,
     }
 
     return output_dict

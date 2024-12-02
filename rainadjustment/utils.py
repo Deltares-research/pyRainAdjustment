@@ -7,6 +7,38 @@ import numpy as np
 import wradlib as wrl
 
 
+def get_interpolation_method(config_xml):
+    """
+    Parameters
+    ----------
+    config_xml: dict
+        Dictionary containing the adjustment settings.
+
+    Returns
+    ------
+    interpolation_methods: callable interpolation method function
+    """
+    interpolation_methods = dict()
+    interpolation_methods["Nearest"] = wrl.ipol.Nearest
+    interpolation_methods["Idw"] = wrl.ipol.Idw
+    interpolation_methods["Linear"] = wrl.ipol.Linear
+    interpolation_methods["OrdinaryKriging"] = wrl.ipol.OrdinaryKriging
+    interpolation_methods["ExternalDriftKriging"] = (
+        wrl.ipol.ExternalDriftKriging
+    )
+
+    try:
+        return interpolation_methods[config_xml["interpolation_method"]]
+    except KeyError:
+        raise ValueError(
+            "Unknown interpolation method {}\n".format(
+                config_xml["interpolation_method"]
+            )
+            + "The available methods are:"
+            + str(list(interpolation_methods.keys()))
+        )
+
+
 def get_rawatobs(config_xml, obs_coords, obs_values, grid_coords, grid_values):
     """
     Parameters

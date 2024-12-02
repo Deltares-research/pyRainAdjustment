@@ -7,7 +7,7 @@ gauge observations.
 import numpy as np
 import wradlib as wrl
 
-from utils import get_rawatobs
+from utils import get_rawatobs, get_interpolation_method
 
 
 def apply_adjustment(
@@ -69,7 +69,7 @@ def check_adjustment_factor(
         List of floats containing the adjusted gridded rainfall values.
     original_values: ndarray(float)
         List of floats containing the orginal gridded rainfall values.
-    max_change_factor: float
+    max_change_factor: float | None
         Maximum change (both increase and decrease) of the adjusted
         gridded rainfall per grid cell point. The values should be provided
         as float of the factor (e.g. 2.0 - max. two times smaller or bigger
@@ -90,18 +90,21 @@ def check_adjustment_factor(
     # 1/max_change_factor, we adjust the original value with the provide
     # max_change_factor (or 1/max_change_factor) to ensure that the correction
     # is not blowing up.
-    conditions = [
-        factor_change > max_change_factor,
-        factor_change < (1 / max_change_factor),
-    ]
-    choices = [
-        original_values * max_change_factor,
-        original_values / max_change_factor,
-    ]
+    if max_change_factor is not None:
+        conditions = [
+            factor_change > max_change_factor,
+            factor_change < (1 / max_change_factor),
+        ]
+        choices = [
+            original_values * max_change_factor,
+            original_values / max_change_factor,
+        ]
 
-    checked_adjusted_values = np.select(
-        conditions, choices, default=adjusted_values
-    )
+        checked_adjusted_values = np.select(
+            conditions, choices, default=adjusted_values
+        )
+    else:
+        checked_adjusted_values = adjusted_values
 
     return checked_adjusted_values
 
@@ -128,6 +131,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
         are present has already taken place by wradlib.
     """
     adjustment_method = config_xml["adjustment_method"]
+    interpolation_method = get_interpolation_method(config_xml)
 
     if adjustment_method == "MFB":
         return wrl.adjust.AdjustMFB(
@@ -147,6 +151,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            ipclass=interpolation_method,
         )
     if adjustment_method == "Multiplicative":
         return wrl.adjust.AdjustMultiply(
@@ -156,6 +161,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            ipclass=interpolation_method,
         )
     if adjustment_method == "Mixed":
         return wrl.adjust.AdjustMixed(
@@ -165,6 +171,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            ipclass=interpolation_method,
         )
 
 
