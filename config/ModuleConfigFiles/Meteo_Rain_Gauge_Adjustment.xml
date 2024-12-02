@@ -91,6 +91,8 @@
 					<float key="max_change_factor" value="$MAX_CHANGE_FACTOR$"/>
 					<int key="nearest_cells_to_use" value="$NEAREST_CELLS_TO_USE$"/>
 					<int key="min_gauges" value="$MIN_GAUGES$"/>
+					<int key="kriging_n_gauges" value="12"/>
+					<string key="interpolation_method" value="Idw"/>
 				</properties>
 			</exportRunFileActivity>
 		</exportActivities>
