@@ -18,14 +18,15 @@ from xml.dom import minidom
 # The function
 # --------------------------------------------------------------------------- #
 
+
 def parse_run_xml(xml_file):
-    """Function to read the xml settings from Delft-FEWS, which are used as 
+    """Function to read the xml settings from Delft-FEWS, which are used as
     initial settings for radar rainfall nowcasting with pysteps.
 
     Parameters
     ----------
     xml_file: string
-        The location and filename of the xml-file which contains the nowcast 
+        The location and filename of the xml-file which contains the nowcast
         settings for pysteps
 
     Returns
@@ -36,7 +37,7 @@ def parse_run_xml(xml_file):
         The used adjustment method. Options are: MFB, Additive, Multiplicative,
         Mixed.
     nearest_cells_to_use: int
-        The number of grid cells around (and including) the grid cell that 
+        The number of grid cells around (and including) the grid cell that
         corresponds to the rain gauge location. Typically 9 cells are used to
         account for rain drift due to wind effects.
     statistical_function: str
@@ -48,7 +49,7 @@ def parse_run_xml(xml_file):
     threshold: float
         The threshold value used. If a gauge or grid cell is below this value,
         it is not used in the adjustment procedure. For the additive
-        adjustment_method, this should always be zero. 
+        adjustment_method, this should always be zero.
     max_change_factor: float
         Maximum change (both increase and decrease) of the adjusted gridded
         rainfall per grid cell point. The values should be provided as float
@@ -57,12 +58,21 @@ def parse_run_xml(xml_file):
     """
     # Set the indir + filename of the used xml file
     input_xml = xml_file
-    
+
     # Open the xml
     doc = xml.dom.minidom.parse(input_xml)
-    
+
     # Get XML elements
     work_dir = doc.getElementsByTagName("workDir")[0].firstChild.nodeValue
+
+    # Initialize the variables
+    threshold = 0.0
+    max_change_factor = None
+    nearest_cells_to_use = 9
+    min_gauges = 5
+    kriging_n_gauges_to_use = 12
+    adjustment_method = None
+    statistical_function = "median"
 
     # Get int properties
     properties = doc.getElementsByTagName("float")
@@ -79,13 +89,15 @@ def parse_run_xml(xml_file):
             nearest_cells_to_use = int(prop.getAttribute("value"))
         if prop.attributes["key"].value == "min_gauges":
             min_gauges = int(prop.getAttribute("value"))
+        if prop.attributes["key"].value == "kriging_n_gauges":
+            kriging_n_gauges_to_use = int(prop.getAttribute("value"))
 
     # Get str properties
     properties = doc.getElementsByTagName("string")
     for prop in properties:
         if prop.attributes["key"].value == "adjustment_method":
             adjustment_method = prop.getAttribute("value")
-        if prop.attributes["key"].value == "statistical_function" :
+        if prop.attributes["key"].value == "statistical_function":
             statistical_function = prop.getAttribute("value")
 
     output_dict = {
@@ -94,6 +106,7 @@ def parse_run_xml(xml_file):
         "max_change_factor": max_change_factor,
         "nearest_cells_to_use": nearest_cells_to_use,
         "min_gauges": min_gauges,
+        "kriging_n_gauges_to_use": kriging_n_gauges_to_use,
         "adjustment_method": adjustment_method,
         "statistical_function": statistical_function,
     }
