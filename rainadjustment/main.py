@@ -15,6 +15,7 @@ import wradlib as wrl
 import xarray as xr
 
 from adjusters import apply_adjustment, check_adjustment_factor
+from downscaling import downscale_gridded_precip
 from xml_config_parser import parse_run_xml
 
 
@@ -50,9 +51,7 @@ def obtain_gauge_information(gauge_folder):
     for gauge_file in gauges_files:
         if gauge_file.endswith("_Gauges.nc"):
             ds = xr.open_dataset(os.path.join(gauge_folder, gauge_file))
-            precip_gauges = ds.P[
-                -1, :
-            ]  # -1 to only get the last hour of values
+            precip_gauges = ds.P[-1, :]  # -1 to only get the last hour of values
 
             # Per station, store the location, station number and the rainfall
             # value
@@ -65,21 +64,24 @@ def obtain_gauge_information(gauge_folder):
 
                 # Append all the values to the output list
                 obs_coords.append([float(station_lon), float(station_lat)])
-                obs_names.append(
-                    str(station_name.tobytes().decode("utf-8").rstrip("\x00"))
-                )
+                obs_names.append(str(station_name.tobytes().decode("utf-8").rstrip("\x00")))
                 obs_values.append(float(station_value))
 
     return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
 
 
-def obtain_gridded_rainfall_information(grid_file):
+def obtain_gridded_rainfall_information(grid_file, downscale=False, clim_file=None):
     """
     Parameters
     ----------
     grid_file: str
         The netCDF file containing the gridded rainfall information for
         the last hour.
+    downscale: bool
+        If True, downscale the gridded precipitation using a (monthly) climatology
+        file. Defaults to False.
+    clim_file: list(str)
+        List of filename(s) containing the monthly climatology information.
 
     Returns
     ------
@@ -93,8 +95,11 @@ def obtain_gridded_rainfall_information(grid_file):
         The shape of the gridded rainfall product before flattening
         (lons, lats)
     """
-    # Open the gridded rainfall information
-    ds_gridded = xr.open_dataset(grid_file)
+    if downscale:
+        ds_gridded = downscale_gridded_precip(precip_orig=grid_file, clim_file=clim_file)
+    else:
+        # Open the gridded rainfall information
+        ds_gridded = xr.open_dataset(grid_file)
     precip_gridded = ds_gridded.P[-1, :, :]
 
     # Get the grid information
@@ -214,9 +219,7 @@ def main():
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn = os.path.join(
-        work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt"
-    )
+    logfn = os.path.join(work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt")
     logging.basicConfig(
         filename=logfn,
         filemode="a",
@@ -252,10 +255,7 @@ def main():
             raise KeyError("Requested adjustment method not present")
         # Make sure the threshold is always 0.0 when the adjustment_method
         # is Additive
-        if (
-            config_xml["adjustment_method"] == "Additive"
-            and config_xml["threshold"] > 0.0
-        ):
+        if config_xml["adjustment_method"] == "Additive" and config_xml["threshold"] > 0.0:
             config_xml["threshold"] = 0.0
 
         # 2. Get the rain gauge information
@@ -265,12 +265,8 @@ def main():
         logger.info("Rain gauge information read successfully.")
 
         # 3. obtain gridded rainfall field
-        grid_coords, grid_values, grid_shape = (
-            obtain_gridded_rainfall_information(
-                grid_file=os.path.join(
-                    work_dir, "input", "gridded_rainfall.nc"
-                )
-            )
+        grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
+            grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
         )
         logger.info("Gridded rainfall infromation read successfully.")
 
@@ -303,10 +299,7 @@ def main():
                 original_values=grid_values,
                 max_change_factor=config_xml["max_change_factor"],
             )
-            if (
-                np.array_equal(adjusted_values_checked, adjusted_values)
-                == False
-            ):
+            if np.array_equal(adjusted_values_checked, adjusted_values) == False:
                 logger.warning(
                     "Some of the adjusted values were above the set maximum adjustment factor."
                 )
@@ -314,21 +307,13 @@ def main():
         # 5. Return corrected precipitation as a stored netCDF in the output folder
         adjustment_factor = adjusted_values_checked / grid_values
         # Make sure there are no negative numbers and no nans in the adjustment
-        adjustment_factor = np.where(
-            adjustment_factor < 0.0, 1.0, adjustment_factor
-        )
-        adjustment_factor = np.nan_to_num(
-            adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0
-        )
+        adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
+        adjustment_factor = np.nan_to_num(adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0)
         # Store it
         store_as_netcdf(
             adjustment_factor=np.reshape(adjustment_factor, grid_shape),
-            dataset_example=xr.open_dataset(
-                os.path.join(work_dir, "input", "gridded_rainfall.nc")
-            ),
-            outfile=os.path.join(
-                work_dir, "output", "adjusted_gridded_rainfall.nc"
-            ),
+            dataset_example=xr.open_dataset(os.path.join(work_dir, "input", "gridded_rainfall.nc")),
+            outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
         )
         logger.info("Adjusted gridded rainfall stored to a netCDF.")
 
@@ -337,12 +322,8 @@ def main():
         logger.exception(exception, exc_info=True)
 
     end = time.perf_counter()
-    logger.info(
-        f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided."
-    )
-    logger.info(
-        "Total adjustment workflow took %s minutes", ((end - start) / 60.0)
-    )
+    logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
+    logger.info("Total adjustment workflow took %s minutes", ((end - start) / 60.0))
 
 
 if __name__ == "__main__":
