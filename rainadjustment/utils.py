@@ -16,27 +16,54 @@ def get_interpolation_method(config_xml):
 
     Returns
     ------
-    interpolation_methods: callable interpolation method function
+    interpolation_methods: callable interpolation method function from wrl.ipol
     """
     interpolation_methods = dict()
     interpolation_methods["Nearest"] = wrl.ipol.Nearest
     interpolation_methods["Idw"] = wrl.ipol.Idw
     interpolation_methods["Linear"] = wrl.ipol.Linear
     interpolation_methods["OrdinaryKriging"] = wrl.ipol.OrdinaryKriging
-    interpolation_methods["ExternalDriftKriging"] = (
-        wrl.ipol.ExternalDriftKriging
-    )
+    interpolation_methods["ExternalDriftKriging"] = wrl.ipol.ExternalDriftKriging
 
     try:
         return interpolation_methods[config_xml["interpolation_method"]]
     except KeyError:
         raise ValueError(
-            "Unknown interpolation method {}\n".format(
-                config_xml["interpolation_method"]
-            )
+            "Unknown interpolation method {}\n".format(config_xml["interpolation_method"])
             + "The available methods are:"
             + str(list(interpolation_methods.keys()))
         )
+
+
+def interpolate(interpolation_method, obs_coords, grid_coords, values_to_interpolate):
+    """
+    Parameters
+    ----------
+    interpolation_method: wrl.ipol method
+        interpolation_method: callable interpolation method function from wrl.ipol.
+        The method can be obtained from the get_interpolation_method function.
+    obs_coords: list(float)
+        List of floats containing the latitude and longitude values of the
+        gauges as (lat, lon).
+    grid_coords: ndarray(float)
+        List of floats containing the latitude and longitude values of the
+        gridded rainfall as (lat, lon).
+    values_to_interpolate: ndarray(float)
+        List of floats containing the values to interpolate on the grid_coords. There
+        should be one value per (lat, lon) coordinate in obs_coords.
+
+    Returns
+    ------
+    interpolated_values: ndarray(float)
+            The interpolated values on the location of the grid_coords.
+    """
+    # Get the interpolator instance
+    interpolator = interpolation_method(
+        obs_coords,
+        grid_coords,
+    )
+    # Apply the method
+    return interpolator(values_to_interpolate)
 
 
 def get_rawatobs(config_xml, obs_coords, obs_values, grid_coords, grid_values):
