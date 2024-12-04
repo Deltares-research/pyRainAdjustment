@@ -13,11 +13,24 @@
 			<int key="MIN_GAUGES" value="5"/>
 			<string key="MODULEINSTANCE_ID_ORIG" value="Import_HSAF"/>
 			<int key="TIMESTEP" value="15"/>
+			<int key="KRIGING_N_GAUGES" value="12"/>
+			<string key="INTERPOL_METHOD" value="Idw"/>
+		</properties>
+	</workflowDescriptor>
+	<workflowDescriptor id="Meteo_Rain_Downscaling_HSAF" name="Downscale HSAF" visible="true" forecast="false" autoApprove="true" allowApprove="true">
+		<properties>
+			<string key="MODULEINSTANCE_ID" value="Meteo_Rain_Gauge_Adjustment"/>
+			<string key="LOCATION_ID_IN" value="HSAF_grid"/>
+			<string key="LOCATION_ID_OUT" value="HSAF_grid"/>
+			<string key="ID_GRIDDED_RAINFALL" value="Meteo_Process_HSAF"/>
+			<string key="CLIM_FILEPATH" value="REGION_HOME/Modules/Meteo/Meteo_Rain_Gauge_Adjustment/clim/wc2.1_30s_prec.nc"/>
+			<int key="DOWNSCALING_FACTOR" value="3"/>
 		</properties>
 	</workflowDescriptor>
 	<rootNode>
 		<node name="Process">
 			<workflowId>Meteo_Rain_Gauge_Adjustment_HSAF</workflowId>
+			<workflowId>Meteo_Rain_Downscaling_HSAF</workflowId>
 		</node>
 	</rootNode>
 </workflowDescriptors>

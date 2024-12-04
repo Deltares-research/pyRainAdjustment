@@ -29,8 +29,8 @@ def parse_run_xml(xml_file):
         The location and filename of the xml-file which contains the nowcast
         settings for pysteps
 
-    Returns
-    -------
+    Returns (if present in the XML file)
+    ------------------------------------
     work_dir: string
         The working directory for the adjustment.
     adjustment_method: string
@@ -66,6 +66,13 @@ def parse_run_xml(xml_file):
         The interpolation method that should be used. An interpolation method
         from https://docs.wradlib.org/en/latest/ipol.html should be provided.
         Defaults to Idw (inverse distance weighting).
+    clim_filepath: str
+        The filepath to the monthly climatology netCDF file.
+    downscaling_factor: int
+        The factor by which the gridded precipitation should be downscaled.
+        For instance, a factor of 2 indicates that the downscaled precipitation
+        will have a grid resolution that is two times finer than the original
+        grid resolution.
     """
     # Set the indir + filename of the used xml file
     input_xml = xml_file
@@ -82,9 +89,11 @@ def parse_run_xml(xml_file):
     nearest_cells_to_use = 9
     min_gauges = 5
     kriging_n_gauges_to_use = 12
+    downscaling_factor = None
     adjustment_method = None
     statistical_function = "median"
     interpolation_method = "Idw"
+    clim_filepath = None
 
     # Get int properties
     properties = doc.getElementsByTagName("float")
@@ -103,6 +112,8 @@ def parse_run_xml(xml_file):
             min_gauges = int(prop.getAttribute("value"))
         if prop.attributes["key"].value == "kriging_n_gauges":
             kriging_n_gauges_to_use = int(prop.getAttribute("value"))
+        if prop.attributes["key"].value == "downscaling_factor":
+            downscaling_factor = int(prop.getAttribute("value"))
 
     # Get str properties
     properties = doc.getElementsByTagName("string")
@@ -113,6 +124,8 @@ def parse_run_xml(xml_file):
             statistical_function = prop.getAttribute("value")
         if prop.attributes["key"].value == "interpolation_method":
             interpolation_method = prop.getAttribute("value")
+        if prop.attributes["key"].value == "clim_filepath":
+            clim_filepath = prop.getAttribute("value")
 
     output_dict = {
         "work_dir": work_dir,
@@ -121,9 +134,11 @@ def parse_run_xml(xml_file):
         "nearest_cells_to_use": nearest_cells_to_use,
         "min_gauges": min_gauges,
         "kriging_n_gauges_to_use": kriging_n_gauges_to_use,
+        "downscaling_factor": downscaling_factor,
         "adjustment_method": adjustment_method,
         "statistical_function": statistical_function,
         "interpolation_method": interpolation_method,
+        "clim_filepath": clim_filepath,
     }
 
     return output_dict
