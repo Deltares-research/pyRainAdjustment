@@ -8,6 +8,10 @@ For contributions to the Python code in this folder, we try to stick to the foll
 - time
 - Main variable of gridded precipitation: default is `P`, but if the dataset has only variable, this is flexible in the code. 
 
+## Variable names:
+- We use snake case for variable names, e.g. `precip_gridded`.
+- Try to make the variable names intuitive, so `precip` or instead of `p`, etc.
+
 ## Path names:
 - For directory names, we use the variable extension `_dir` in the variable name. For instance, `work_dir`.
 - For filenames, we use the variable extension `_file` in the variable name. For instance, `gridded_file`.
