@@ -3,6 +3,6 @@
 	<activity>
 		<runIndependent>false</runIndependent>
 		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
-		<moduleConfigFileName>Meteo_Rain_Downscaling_HSAF</moduleConfigFileName>
+		<moduleConfigFileName>Meteo_Rain_Downscaling</moduleConfigFileName>
 	</activity>
 </workflow>

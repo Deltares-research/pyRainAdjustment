@@ -216,7 +216,7 @@ def main():
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn = os.path.join(work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt")
+    logfn = os.path.join(work_dir, "logs", f"log_pyRainAdjustment.txt")
     logging.basicConfig(
         filename=logfn,
         filemode="a",
@@ -314,7 +314,7 @@ def main():
                 dataset_example=xr.open_dataset(
                     os.path.join(work_dir, "input", "gridded_rainfall.nc")
                 ),
-                outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
+                outfile=os.path.join(work_dir, "output", "adjustment_factors_gridded_rainfall.nc"),
             )
             logger.info("Adjusted gridded rainfall stored to a netCDF.")
             logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")

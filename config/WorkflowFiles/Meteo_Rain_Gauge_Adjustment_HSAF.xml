@@ -7,7 +7,7 @@
 	</activity>
 	<activity>
 		<runIndependent>false</runIndependent>
-		<moduleInstanceId>Meteo_Apply_Rain_Gauge_Adjustment</moduleInstanceId>
+		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 		<moduleConfigFileName>Meteo_Apply_Rain_Gauge_Adjustment</moduleConfigFileName>
 	</activity>
 </workflow>

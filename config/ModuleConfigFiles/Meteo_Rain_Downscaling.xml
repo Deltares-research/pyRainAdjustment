@@ -2,16 +2,16 @@
 <generalAdapterRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews http://fews.wldelft.nl/schemas/version1.0/generalAdapterRun.xsd">
 	<general>
 		<description>Downscale a gridded rainfall product with a predefined downscaling factor</description>
-		<rootDir>%REGION_HOME%/Modules/Rain_Gauge_Adjustment</rootDir>
+		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
 		<exportDir>%ROOT_DIR%/input</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
 		<exportIdMap>IdHSAFNowcast</exportIdMap>
 		<importDir>%ROOT_DIR%/output</importDir>
-		<importIdMap>IdAdjustmentFactor</importIdMap>
+		<importIdMap>IdDownscaling</importIdMap>
 		<dumpFileDir>$GA_DUMPFILEDIR$</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
-		<diagnosticFile>%ROOT_DIR%/gauge_adjustment_module_diag.xml</diagnosticFile>
+		<diagnosticFile>%ROOT_DIR%/pyRainAdjustment_module_diag.xml</diagnosticFile>
 	</general>
 	<activities>
 		<startUpActivities>
@@ -34,9 +34,9 @@
 				<netcdfFormat>netcdf4</netcdfFormat>
 				<timeSeriesSets>
 					<timeSeriesSet>
-						<moduleInstanceId>$ID_GRIDDED_RAINFALL$</moduleInstanceId>
+						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 						<valueType>grid</valueType>
-						<parameterId>P.obs</parameterId>
+						<parameterId>$PARAMETER$</parameterId>
 						<locationId>$LOCATION_ID_IN$</locationId>
 						<timeSeriesType>external historical</timeSeriesType>
 						<timeStep unit="minute" multiplier="15" timeZone="GMT"/>
@@ -49,8 +49,8 @@
 			<exportRunFileActivity>
 				<exportFile>downscaling_settings.xml</exportFile>
 				<properties>
-					<int key="clim_filepath" value="$CLIM_FILEPATH$"/>
-					<string key="downscaling_factor" value="$DOWNSCALING_FACTOR$"/>
+					<string key="clim_filepath" value="$CLIM_FILEPATH$"/>
+					<int key="downscaling_factor" value="$DOWNSCALING_FACTOR$"/>
 				</properties>
 			</exportRunFileActivity>
 		</exportActivities>
@@ -67,10 +67,10 @@
 					<argument>downscaling</argument>
 				</arguments>
 				<console>
-					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_adjustment_console.txt</redirectToLogFile>
+					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_pyRainAdjustment_console.txt</redirectToLogFile>
 				</console>
 				<logFile>
-					<file>%ROOT_DIR%/logs/log_meteo_rain_gauge_adjustment.txt</file>
+					<file>%ROOT_DIR%/logs/log_pyRainAdjustment.txt</file>
                     <infoLinePattern>*INFO*</infoLinePattern>
                     <warningLinePattern>*WARNING*</warningLinePattern>
                     <debugLinePattern>*DEBUG*</debugLinePattern>
@@ -85,9 +85,9 @@
 				<importFile>%ROOT_DIR%/output/downscaled_gridded_rainfall.nc</importFile>
 				<timeSeriesSets>
 					<timeSeriesSet>
-						<moduleInstanceId>$ID_GRIDDED_RAINFALL$</moduleInstanceId>
+						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 						<valueType>grid</valueType>
-						<parameterId>P.fc</parameterId>
+						<parameterId>$PARAMETER$</parameterId>
 						<locationId>$LOCATION_ID_OUT$</locationId>
 						<timeSeriesType>external historical</timeSeriesType>
 						<timeStep unit="minute" multiplier="15" timeZone="GMT"/>

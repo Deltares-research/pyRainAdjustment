@@ -2,7 +2,7 @@
 <generalAdapterRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews http://fews.wldelft.nl/schemas/version1.0/generalAdapterRun.xsd">
 	<general>
 		<description>Adjust a gridded rainfall product with the available rain gauges</description>
-		<rootDir>%REGION_HOME%/Modules/Rain_Gauge_Adjustment</rootDir>
+		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
 		<exportDir>%ROOT_DIR%/input</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
@@ -11,7 +11,7 @@
 		<importIdMap>IdAdjustmentFactor</importIdMap>
 		<dumpFileDir>$GA_DUMPFILEDIR$</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
-		<diagnosticFile>%ROOT_DIR%/gauge_adjustment_module_diag.xml</diagnosticFile>
+		<diagnosticFile>%ROOT_DIR%/pyRainAdjustment_module_diag.xml</diagnosticFile>
 	</general>
 	<activities>
 		<startUpActivities>
@@ -109,10 +109,10 @@
 					<argument>adjustment</argument>
 				</arguments>
 				<console>
-					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_adjustment_console.txt</redirectToLogFile>
+					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_pyRainAdjustment_console.txt</redirectToLogFile>
 				</console>
 				<logFile>
-					<file>%ROOT_DIR%/logs/log_meteo_rain_gauge_adjustment.txt</file>
+					<file>%ROOT_DIR%/logs/log_pyRainAdjustment.txt</file>
                     <infoLinePattern>*INFO*</infoLinePattern>
                     <warningLinePattern>*WARNING*</warningLinePattern>
                     <debugLinePattern>*DEBUG*</debugLinePattern>
@@ -124,7 +124,7 @@
 		</executeActivities>
 		<importActivities>
 			<importNetcdfActivity>
-				<importFile>%ROOT_DIR%/output/adjusted_gridded_rainfall.nc</importFile>
+				<importFile>%ROOT_DIR%/output/adjustment_factors_gridded_rainfall.nc</importFile>
 				<timeSeriesSets>
 					<timeSeriesSet>
 						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
