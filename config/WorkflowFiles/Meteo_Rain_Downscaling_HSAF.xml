@@ -3,11 +3,6 @@
 	<activity>
 		<runIndependent>false</runIndependent>
 		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
-		<moduleConfigFileName>Meteo_Rain_Gauge_Adjustment</moduleConfigFileName>
-	</activity>
-	<activity>
-		<runIndependent>false</runIndependent>
-		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
-		<moduleConfigFileName>Meteo_Apply_Rain_Gauge_Adjustment</moduleConfigFileName>
+		<moduleConfigFileName>Meteo_Rain_Downscaling</moduleConfigFileName>
 	</activity>
 </workflow>
