@@ -2,6 +2,12 @@
 """
 Functions to adjust the gridded rainfall observations / estimates with rain 
 gauge observations.
+
+Available functions:
+- apply_adjustment
+- check_adjustment_factor
+- __obtain_adjustment_method
+- __kriging_adjustment
 """
 
 import numpy as np
@@ -10,9 +16,7 @@ import wradlib as wrl
 from utils import get_rawatobs, get_interpolation_method
 
 
-def apply_adjustment(
-    config_xml, obs_coords, obs_values, grid_coords, grid_values
-):
+def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values):
     """
     Main function to apply the adjustment on the gridded rainfall product.
 
@@ -100,9 +104,7 @@ def check_adjustment_factor(
             original_values / max_change_factor,
         ]
 
-        checked_adjusted_values = np.select(
-            conditions, choices, default=adjusted_values
-        )
+        checked_adjusted_values = np.select(conditions, choices, default=adjusted_values)
     else:
         checked_adjusted_values = adjusted_values
 
@@ -175,9 +177,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
         )
 
 
-def __kriging_adjustment(
-    config_xml, obs_coords, obs_values, grid_coords, grid_values
-):
+def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values):
     """
     Parameters
     ----------

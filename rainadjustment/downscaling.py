@@ -9,6 +9,8 @@ import xarray as xr
 import rioxarray
 from rasterio.enums import Resampling
 
+from io import check_dimensions
+
 
 def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
     """
@@ -30,9 +32,13 @@ def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
     precip_downscaled: Xarray Dataset
         Dataset containing the downscaled gridded precipitation values.
     """
-    # First read the data to RadarDataSet classes in HydroMT
+    # First read the data
     precip_coarse = xr.open_dataset(precip_orig)
+    precip_coarse = check_dimensions(precip_coarse)
+
+    # Write the CRS of the data
     precip_coarse = precip_coarse.rio.write_crs(precip_coarse.crs.attrs["epsg_code"])
+
     # Get the output grid, which will be used for all reprojections later on
     new_x = precip_coarse.rio.width * downscale_factor
     new_y = precip_coarse.rio.height * downscale_factor
@@ -54,11 +60,11 @@ def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
             )
 
     # First, clip the data
-    min_lon = precip_out.x.min().item()
-    max_lon = precip_out.x.max().item()
-    min_lat = precip_out.y.min().item()
-    max_lat = precip_out.y.max().item()
-    ds_clim_clipped = ds_clim.rio.clip_box(minx=min_lon, miny=min_lat, maxx=max_lon, maxy=max_lat)
+    min_x = precip_out.x.min().item()
+    max_x = precip_out.x.max().item()
+    min_y = precip_out.y.min().item()
+    max_y = precip_out.y.max().item()
+    ds_clim_clipped = ds_clim.rio.clip_box(minx=min_x, miny=min_y, maxx=max_x, maxy=max_y)
 
     # Make sure the climatology is monthly
     if not "month" in ds_clim_clipped.dims:

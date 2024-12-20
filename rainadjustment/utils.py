@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Utility functions for pyRainAdjustment.
+
+Available functons:
+- get_interpolation_method
+- interpolate
+- get_rawatobs
+- __idvalid
 """
 
 import numpy as np
