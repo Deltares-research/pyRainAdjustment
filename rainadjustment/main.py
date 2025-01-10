@@ -91,7 +91,10 @@ def obtain_gridded_rainfall_information(grid_file):
         (lons, lats)
     """
     # Open the gridded rainfall information
-    ds_gridded = xr.open_dataset(grid_file)
+    if type(grid_file) == str:
+        ds_gridded = xr.open_dataset(grid_file)
+    else:
+        ds_gridded = grid_file
     precip_gridded = ds_gridded.P[-1, :, :]
 
     # Get the grid information 
