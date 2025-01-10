@@ -64,38 +64,17 @@ def parse_run_xml(xml_file):
     # Get XML elements
     work_dir = doc.getElementsByTagName("workDir")[0].firstChild.nodeValue
 
-    # Get int properties
+    output_dict = {}
     properties = doc.getElementsByTagName("float")
     for prop in properties:
-        if prop.attributes["key"].value == "threshold":
-            threshold = float(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "max_change_factor":
-            max_change_factor = float(prop.getAttribute("value"))
+        output_dict.update({prop.attributes["key"].value: float(prop.getAttribute("value"))})
 
-    # Get int properties
     properties = doc.getElementsByTagName("int")
     for prop in properties:
-        if prop.attributes["key"].value == "nearest_cells_to_use":
-            nearest_cells_to_use = int(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "min_gauges":
-            min_gauges = int(prop.getAttribute("value"))
+        output_dict.update({prop.attributes["key"].value: int(prop.getAttribute("value"))})
 
-    # Get str properties
     properties = doc.getElementsByTagName("string")
     for prop in properties:
-        if prop.attributes["key"].value == "adjustment_method":
-            adjustment_method = prop.getAttribute("value")
-        if prop.attributes["key"].value == "statistical_function" :
-            statistical_function = prop.getAttribute("value")
-
-    output_dict = {
-        "work_dir": work_dir,
-        "threshold": threshold,
-        "max_change_factor": max_change_factor,
-        "nearest_cells_to_use": nearest_cells_to_use,
-        "min_gauges": min_gauges,
-        "adjustment_method": adjustment_method,
-        "statistical_function": statistical_function,
-    }
+        output_dict.update({prop.attributes["key"].value: prop.getAttribute("value")})
 
     return output_dict
