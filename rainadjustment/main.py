@@ -125,17 +125,17 @@ def main():
                 if np.array_equal(adjusted_values, grid_values[t]):
                     if np.isfinite(grid_values).any():
                         logger.warning(
-                            f"Adjustment for time step {str(t+1)} out of {str(grid_values.shape[0])} has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step."
+                            f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step."
                         )
                         adjusted_values_checked = adjusted_values * np.nan
                     else:
                         logger.warning(
-                            f"Adjustment for time step {str(t+1)} out of {str(grid_values.shape[0])} has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step."
+                            f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step."
                         )
                         adjusted_values_checked = adjusted_values * np.nan
                 else:
                     logger.info(
-                        f"Adjustment for time step {str(t+1)} out of {str(grid_values.shape[0])} has taken place successfully."
+                        f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has taken place successfully."
                     )
                     # Also ensure that the correction values have not been too high.
                     adjusted_values_checked = check_adjustment_factor(
