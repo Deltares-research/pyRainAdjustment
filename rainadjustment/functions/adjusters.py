@@ -13,7 +13,7 @@ Available functions:
 import numpy as np
 import wradlib as wrl
 
-from utils import get_rawatobs, get_interpolation_method
+from utils.utils import get_rawatobs, get_interpolation_method
 
 
 def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values):

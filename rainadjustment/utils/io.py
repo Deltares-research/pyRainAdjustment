@@ -212,19 +212,19 @@ def check_dimensions(precip):
     """
     # Check if the dataset contains x and y. If it only contains lat, lon
     # or latitude and longitude, rename.
-    if "x" not in precip.dims:
-        if "lon" in precip.dims:
+    if "x" not in precip.coords:
+        if "lon" in precip.coords:
             precip = precip.rename({"lon": "x"})
-        elif "longitude" in precip.dims:
+        elif "longitude" in precip.coords:
             precip = precip.rename({"longitude": "x"})
         else:
             raise KeyError(
                 "The provided DataArray does not contain the dimensions x, lon or longitude"
             )
-    if "y" not in precip.dims:
-        if "lat" in precip.dims:
+    if "y" not in precip.coords:
+        if "lat" in precip.coords:
             precip = precip.rename({"lat": "y"})
-        elif "latitude" in precip.dims:
+        elif "latitude" in precip.coords:
             precip = precip.rename({"latitude": "y"})
         else:
             raise KeyError(

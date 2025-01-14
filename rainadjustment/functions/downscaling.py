@@ -9,7 +9,7 @@ import xarray as xr
 import rioxarray
 from rasterio.enums import Resampling
 
-from io import check_dimensions
+from utils.io import check_dimensions
 
 
 def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):

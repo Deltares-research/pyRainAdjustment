@@ -12,10 +12,10 @@ import time
 import numpy as np
 import xarray as xr
 
-from adjusters import apply_adjustment, check_adjustment_factor
-from downscaling import downscale_gridded_precip
-from io import obtain_gauge_information, obtain_gridded_rainfall_information, store_as_netcdf
-from xml_config_parser import parse_run_xml
+from functions.adjusters import apply_adjustment, check_adjustment_factor
+from functions.downscaling import downscale_gridded_precip
+from utils.io import obtain_gauge_information, obtain_gridded_rainfall_information, store_as_netcdf
+from utils.xml_config_parser import parse_run_xml
 
 
 # ----------------------------------------------------------------------- #
