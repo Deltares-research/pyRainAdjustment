@@ -95,38 +95,6 @@ def parse_run_xml(xml_file):
     interpolation_method = "Idw"
     clim_filepath = None
 
-    # Get int properties
-    properties = doc.getElementsByTagName("float")
-    for prop in properties:
-        if prop.attributes["key"].value == "threshold":
-            threshold = float(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "max_change_factor":
-            max_change_factor = float(prop.getAttribute("value"))
-
-    # Get int properties
-    properties = doc.getElementsByTagName("int")
-    for prop in properties:
-        if prop.attributes["key"].value == "nearest_cells_to_use":
-            nearest_cells_to_use = int(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "min_gauges":
-            min_gauges = int(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "kriging_n_gauges":
-            kriging_n_gauges_to_use = int(prop.getAttribute("value"))
-        if prop.attributes["key"].value == "downscaling_factor":
-            downscaling_factor = int(prop.getAttribute("value"))
-
-    # Get str properties
-    properties = doc.getElementsByTagName("string")
-    for prop in properties:
-        if prop.attributes["key"].value == "adjustment_method":
-            adjustment_method = prop.getAttribute("value")
-        if prop.attributes["key"].value == "statistical_function":
-            statistical_function = prop.getAttribute("value")
-        if prop.attributes["key"].value == "interpolation_method":
-            interpolation_method = prop.getAttribute("value")
-        if prop.attributes["key"].value == "clim_filepath":
-            clim_filepath = prop.getAttribute("value")
-
     output_dict = {
         "work_dir": work_dir,
         "threshold": threshold,
@@ -140,5 +108,17 @@ def parse_run_xml(xml_file):
         "interpolation_method": interpolation_method,
         "clim_filepath": clim_filepath,
     }
+
+    properties = doc.getElementsByTagName("float")
+    for prop in properties:
+        output_dict.update({prop.attributes["key"].value: float(prop.getAttribute("value"))})
+
+    properties = doc.getElementsByTagName("int")
+    for prop in properties:
+        output_dict.update({prop.attributes["key"].value: int(prop.getAttribute("value"))})
+
+    properties = doc.getElementsByTagName("string")
+    for prop in properties:
+        output_dict.update({prop.attributes["key"].value: prop.getAttribute("value")})
 
     return output_dict
