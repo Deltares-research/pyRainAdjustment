@@ -5,291 +5,17 @@ adjustment procedure.
 """
 
 import argparse
-from datetime import datetime
 import logging
 import os
 import time
 
 import numpy as np
-import wradlib as wrl
 import xarray as xr
 
-from xml_config_parser import parse_run_xml
-
-
-# ----------------------------------------------------------------------- #
-# Functions
-# ----------------------------------------------------------------------- #
-def obtain_gauge_information(gauge_folder):
-    """
-    Parameters
-    ----------
-    gauge_folder: str
-        The folder containing all netCDFs with the rain gauge observations.
-        The rain gauge observations are expected to contain "_Gauges.nc"
-        in their name.
-
-    Returns
-    ------
-    obs_coords: list(float)
-        List of float containing the latitude and longitude values of the
-        gauges as (lat, lon).
-    obs_names: list(str)
-        List containing the station names.
-    obs_values: list(float)
-        List containing the station observation values per station.
-    """
-    # Create the output list
-    obs_coords = []
-    obs_names = []
-    obs_values = []
-
-    # Open the files
-    gauges_files = os.listdir(gauge_folder)
-    for gauge_file in gauges_files:
-        if gauge_file.endswith("_Gauges.nc"):
-            ds = xr.open_dataset(os.path.join(gauge_folder, gauge_file))
-            precip_gauges = ds.P[-1, :]  # -1 to only get the last hour of values
-
-            # Per station, store the location, station number and the rainfall 
-            # value
-            for station_index in range(precip_gauges.shape[0]):
-                # Get the station information per station
-                station_lat = precip_gauges[station_index].lat.values
-                station_lon = precip_gauges[station_index].lon.values
-                station_name = precip_gauges[station_index].station_id.values
-                station_value = precip_gauges[station_index].values
-
-                # Append all the values to the output list
-                obs_coords.append([float(station_lon), float(station_lat)])
-                obs_names.append(
-                    str(station_name.tobytes().decode('utf-8').rstrip('\x00'))
-                )
-                obs_values.append(float(station_value))
-
-    return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
-
-
-def obtain_gridded_rainfall_information(grid_file):
-    """
-    Parameters
-    ----------
-    grid_file: str
-        The netCDF file containing the gridded rainfall information for
-        the last hour.
-
-    Returns
-    ------
-    grid_coords: ndarray(float)
-        List of floats containing the latitude and longitude values of the
-        gridded rainfall as (lat, lon).
-    grid_values: ndarray(float)
-        List containing the rainfall values per grid point as a flattened
-        array.
-    grid_shape: (int, int)
-        The shape of the gridded rainfall product before flattening 
-        (lons, lats)
-    """
-    # Open the gridded rainfall information
-    if type(grid_file) == str:
-        ds_gridded = xr.open_dataset(grid_file)
-    else:
-        ds_gridded = grid_file
-    precip_gridded = ds_gridded.P[-1, :, :]
-
-    # Get the grid information 
-    grid_lats = precip_gridded.y.values
-    grid_lons = precip_gridded.x.values
-    grid_coords = wrl.util.gridaspoints(grid_lats, grid_lons)
-    grid_shape = len(grid_lats), len(grid_lons)
-    grid_values = np.array(precip_gridded.values).flatten()
-
-    return grid_coords, grid_values, grid_shape
-
-
-def obtain_adjustment_method(config_xml, obs_coords, grid_coords):
-    """
-    Parameters
-    ----------
-    config_xml: dict
-        Dictionary containing the adjustment settings.
-    obs_coords: list(float)
-        List of float containing the latitude and longitude values of the
-        gauges as (lat, lon).
-    grid_coords: ndarray(float)
-        List of floats containing the latitude and longitude values of the
-        gridded rainfall as (lat, lon).
-
-
-    Returns
-    ------
-    adjuster: wrl instance
-        The adjuster that is called, already initialized for the obs and
-        grid coords. A check if sufficient valid observation-grid pairs
-        are present has already taken place by wradlib.
-    """
-    adjustment_method = config_xml["adjustment_method"]
-
-    if adjustment_method == "MFB":
-        adjuster = wrl.adjust.AdjustMFB(
-            obs_coords=obs_coords,
-            raw_coords=grid_coords,
-            nnear_raws=config_xml["nearest_cells_to_use"],
-            stat=config_xml["statistical_function"],
-            mingages=config_xml["min_gauges"],
-            minval=config_xml["threshold"],
-            mfb_args={"method": "median"},
-        )
-    if adjustment_method == "Additive":
-        adjuster = wrl.adjust.AdjustBase(
-            obs_coords=obs_coords,
-            raw_coords=grid_coords,
-            nnear_raws=config_xml["nearest_cells_to_use"],
-            stat=config_xml["statistical_function"],
-            mingages=config_xml["min_gauges"],
-            minval=config_xml["threshold"],
-        )
-    if adjustment_method == "Multiplicative":
-        adjuster = wrl.adjust.AdjustMultiply(
-            obs_coords=obs_coords,
-            raw_coords=grid_coords,
-            nnear_raws=config_xml["nearest_cells_to_use"],
-            stat=config_xml["statistical_function"],
-            mingages=config_xml["min_gauges"],
-            minval=config_xml["threshold"],
-        )
-    if adjustment_method == "Mixed":
-        adjuster = wrl.adjust.AdjustMixed(
-            obs_coords=obs_coords,
-            raw_coords=grid_coords,
-            nnear_raws=config_xml["nearest_cells_to_use"],
-            stat=config_xml["statistical_function"],
-            mingages=config_xml["min_gauges"],
-            minval=config_xml["threshold"],
-        )
-
-    return adjuster
-
-
-def check_adjustment_factor(
-        adjusted_values,
-        original_values,
-        max_change_factor,
-):
-    """
-    Parameters
-    ----------
-    adjusted_values: ndarray(float)
-        List of floats containing the adjusted gridded rainfall values.
-    original_values: ndarray(float)
-        List of floats containing the orginal gridded rainfall values.
-    max_change_factor: float
-        Maximum change (both increase and decrease) of the adjusted gridded
-        rainfall per grid cell point. The values should be provided as float
-        of the factor (e.g. 2.0 - max. two times smaller or bigger than
-        orginal).
-
-    Returns
-    -------
-    checked_adjusted_values: ndarray(float)
-        The adjuster that is called, already initialized for the obs and
-        grid coords. A check if sufficient valid observation-grid pairs
-        are present has already taken place by wradlib.
-    """
-    # Check the factor increase and decrease from the original_values to
-    # the adjusted_values
-    factor_change = adjusted_values / original_values
-
-    # Where factor_change is larger than max_change_factor or smaller
-    # than 1/max_change_factor, we adjust the original value with the
-    # provide max_change_factor (or 1/max_change_factor) to ensure
-    # that the correction is not blowing up.
-    conditions = [
-        factor_change > max_change_factor,
-        factor_change < (1 / max_change_factor),
-    ]
-    choices = [
-        original_values * max_change_factor,
-        original_values / max_change_factor
-    ]
-
-    checked_adjusted_values = np.select(conditions, choices, default=adjusted_values)
-
-    return checked_adjusted_values
-
-
-def store_as_netcdf(adjustment_factor, dataset_example, outfile):
-    """
-    Saves the output adjustment factors to a new NetCDF file.
-
-    Parameters
-    ----------
-        adjustment_factor: ndarray
-            2D array containing the adjustment factors on the
-            original gridded rainfall product grid.
-        dataset_example: xr DataSet
-            The original gridded rainfall xr DataSet which will
-            form the blue print for the output dataset.
-        outfile: str
-            The output file location.
-
-    Returns
-    -------
-    None
-    """
-    # Make a dataset out of the array
-    output_dataset = xr.Dataset(
-        {
-            'adjustment_factor': (('time', 'y', 'x'), [adjustment_factor, adjustment_factor])
-        },
-        coords={
-            'time': dataset_example["time"].values,
-            'y': dataset_example["y"].values,
-            'x': dataset_example["x"].values,
-        }
-    )
-
-    output_dataset["crs"] = dataset_example["crs"]
-
-    # Make CF compliant and add global attributes
-    output_dataset.attrs.update(
-        {
-            "title": "Adjustment factor to correct gridded rainfall",
-            "institution": "Deltares",
-            "source": " ",
-            "history": f"{datetime.now().strftime('%Y-%m-%dT%H:%M:%S')}: Created",
-            "references": "The open-source Python tool wradlib was used for the adjustment factors",
-            "Conventions": "CF-1.8",
-            "projection": "EPSG:4326"
-        }
-    )
-
-    output_dataset["y"].attrs.update({
-        "axis": "Y",
-        "long_name": "latitude",
-        "standard_name": "latitude",
-        "units": "degrees_north"
-    })
-
-    output_dataset["x"].attrs.update({
-        "axis": "X",
-        "long_name": "longitude",
-        "standard_name": "longitude",
-        "units": "degrees_east"
-    })
-
-    # Add attributes to data variables
-    output_dataset["adjustment_factor"].attrs.update({
-        "long_name": "Adjustment Factor",
-        "standard_name": "adjustment_factor",
-        "units": "-",
-    })
-
-    # Saving reprojected data
-    output_dataset.to_netcdf(outfile)
-    output_dataset.close()
-
-    return
+from functions.adjusters import apply_adjustment, check_adjustment_factor
+from functions.downscaling import downscale_gridded_precip
+from utils.io import obtain_gauge_information, obtain_gridded_rainfall_information, store_as_netcdf
+from utils.xml_config_parser import parse_run_xml
 
 
 # ----------------------------------------------------------------------- #
@@ -309,21 +35,28 @@ def main():
         type=str,
         help="Path to run.xml config file created by Delft-FEWS.",
     )
+    global_parser.add_argument(
+        "--requested_functionality",
+        type=str,
+        help="Requested functionality: adjustment or downscaling",
+    )
 
     # Parse known global args first
     global_args = global_parser.parse_known_args()[0]
+    requested_functionality = global_args.requested_functionality
 
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn = os.path.join(work_dir, "logs", f"log_meteo_rain_gauge_adjustment.txt")
-    logging.basicConfig(filename=logfn,
-                        filemode='a',
-                        format='%(asctime)s - %(levelname)s - %(message)s',
-                        datefmt='%H:%M:%S',
-                        level=logging.INFO)
+    logfn = os.path.join(work_dir, "logs", f"log_pyRainAdjustment.txt")
+    logging.basicConfig(
+        filename=logfn,
+        filemode="a",
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%H:%M:%S",
+        level=logging.INFO,
+    )
     logger = logging.getLogger()
-    logger.addHandler(logging.StreamHandler())
     logger.info("Arguments parsed:\n %s", global_args)
 
     # If --xml_config is provided, parse it and prepare to use its values
@@ -336,83 +69,157 @@ def main():
 
     # The actual work
     try:
-        # 1. Perform some checks
-        adjustment_methods = ["MFB", "Additive", "Multiplicative", "Mixed"]
-        if config_xml["adjustment_method"] not in adjustment_methods:
-            logger.error(
-                f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}")
-            raise KeyError("Requested adjustment method not present")
-        # Make sure the threshold is always 0.0 when the adjustment_method
-        # is Additive
-        if config_xml["adjustment_method"] == "Additive" and config_xml["threshold"] > 0.0:
-            config_xml["threshold"] = 0.0
-            logger.warning(f"Config value for 'threshold' has been adjusted to '0' from "
-                           f"'{config_xml['threshold']}' because the chosen method is 'Additive'")
+        # Check what functionality is requested and execute that functionality
+        if requested_functionality == "adjustment":
+            # 1. Perform some checks
+            adjustment_methods = [
+                "MFB",
+                "Additive",
+                "Multiplicative",
+                "Mixed",
+                "KED",
+            ]
+            if config_xml["adjustment_method"] not in adjustment_methods:
+                logger.error(
+                    f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}"
+                )
+                raise KeyError("Requested adjustment method not present")
+            # Make sure the threshold is always 0.0 when the adjustment_method
+            # is Additive
+            if config_xml["adjustment_method"] == "Additive" and config_xml["threshold"] > 0.0:
+                config_xml["threshold"] = 0.0
 
-        # 2. Get the rain gauge information
-        obs_coords, obs_names, obs_values = obtain_gauge_information(
-            gauge_folder=os.path.join(work_dir, "input")
-        )
-        logger.info("Rain gauge information read successfully.")
-
-        # 3. obtain gridded rainfall field
-        grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
-            grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
-        )
-        logger.info("Gridded rainfall information read successfully.")
-
-        # 4. perform correction
-        adjuster = obtain_adjustment_method(
-            config_xml=config_xml,
-            obs_coords=obs_coords,
-            grid_coords=grid_coords
-        )
-        adjusted_values = adjuster(obs_values, grid_values)
-
-        # A final check to ensure that the adjustment has taken place.
-        if np.array_equal(adjusted_values, grid_values):
-            if np.isfinite(grid_values).any():
-                logger.warning(
-                    "Adjustment has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned.")
-                adjusted_values_checked = adjusted_values * np.nan
-            else:
-                logger.warning(
-                    "Adjustment has not taken place. The gridded rainfall only contains nans. The original grid values will be returned.")
-                adjusted_values_checked = adjusted_values * np.nan
-        else:
-            logger.info("Adjustment has taken place successfully.")
-            # Also ensure that the correction values have not been too high.
-            adjusted_values_checked = check_adjustment_factor(
-                adjusted_values=adjusted_values,
-                original_values=grid_values,
-                max_change_factor=config_xml["max_change_factor"],
+            # 2. Get the rain gauge information
+            obs_coords, obs_names, obs_values = obtain_gauge_information(
+                gauge_folder=os.path.join(work_dir, "input")
             )
-            if np.array_equal(adjusted_values_checked, adjusted_values) == False:
-                logger.warning("Some of the adjusted values were above the set maximum adjustment factor."
-                               f"and have been corrected to adhere to this maximum factor")
+            logger.info("Rain gauge information read successfully.")
 
-        # 5. Return corrected precipitation as a stored netCDF in the output folder
-        adjustment_factor = adjusted_values_checked / grid_values
-        # Make sure there are no negative numbers and no nans in the adjustment
-        adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
-        adjustment_factor = np.nan_to_num(adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0)
-        # Store it
-        store_as_netcdf(
-            adjustment_factor=np.reshape(adjustment_factor, grid_shape),
-            dataset_example=xr.open_dataset(
-                os.path.join(work_dir, "input", "gridded_rainfall.nc")
-            ),
-            outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc")
-        )
-        logger.info("Adjusted gridded rainfall stored to a netCDF.")
+            # 3. obtain gridded rainfall field
+            grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
+                grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
+            )
+            logger.info("Gridded rainfall information read successfully.")
+
+            # Check if obs_values and grid_values have the same number of timesteps
+            if obs_values.shape[0] != grid_values.shape[0]:
+                logger.error(
+                    f"No. of supplied timesteps in observations ({str(obs_values.shape[0])}) is different from number of timesteps in gridded precip dataset ({grid_values.shape[0]})"
+                )
+                raise AssertionError(
+                    "No. of supplied timesteps in observations is different from those in the gridded precip dataset"
+                )
+
+            # 4. perform correction
+            adjustment_factor_out = []
+            for t in range(grid_values.shape[0]):
+                adjusted_values = apply_adjustment(
+                    config_xml=config_xml,
+                    obs_coords=obs_coords,
+                    obs_values=obs_values[t],
+                    grid_coords=grid_coords,
+                    grid_values=grid_values[t],
+                )
+
+                # A final check to ensure that the adjustment has taken place.
+                if np.array_equal(adjusted_values, grid_values[t]):
+                    if np.isfinite(grid_values).any():
+                        logger.warning(
+                            f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step."
+                        )
+                        adjusted_values_checked = adjusted_values * np.nan
+                    else:
+                        logger.warning(
+                            f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step."
+                        )
+                        adjusted_values_checked = adjusted_values * np.nan
+                else:
+                    logger.info(
+                        f"Adjustment for time step {str(t)} out of {str(grid_values.shape[0])} has taken place successfully."
+                    )
+                    # Also ensure that the correction values have not been too high.
+                    adjusted_values_checked = check_adjustment_factor(
+                        adjusted_values=adjusted_values,
+                        original_values=grid_values[t],
+                        max_change_factor=config_xml["max_change_factor"],
+                    )
+                    if np.array_equal(adjusted_values_checked, adjusted_values) == False:
+                        logger.warning(
+                            "Some of the adjusted values were above the set maximum adjustment factor."
+                        )
+
+                # 5. Get the adjustment factor
+                adjustment_factor = adjusted_values_checked / grid_values[t]
+                # Make sure there are no negative numbers and no nans in the adjustment
+                adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
+                adjustment_factor = np.nan_to_num(
+                    adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0
+                )
+
+                # Reshape and store as a variable
+                adjustment_factor_out.append(np.reshape(adjustment_factor, grid_shape))
+
+            # 6. Store it in a netCDF
+            store_as_netcdf(
+                adjustment_factor=np.array(adjustment_factor_out),
+                dataset_example=xr.open_dataset(
+                    os.path.join(work_dir, "input", "gridded_rainfall.nc")
+                ),
+                outfile=os.path.join(work_dir, "output", "adjustment_factors_gridded_rainfall.nc"),
+            )
+            logger.info("Adjusted gridded rainfall stored to a netCDF.")
+            logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
+
+        elif requested_functionality == "downscaling":
+            # 1. Downscale the precipitation
+            if (
+                config_xml["clim_filepath"] is not None
+                and config_xml["downscaling_factor"] is not None
+            ):
+                precip_downscaled = downscale_gridded_precip(
+                    precip_orig=os.path.join(work_dir, "input", "gridded_rainfall.nc"),
+                    clim_file=config_xml["clim_filepath"],
+                    downscale_factor=config_xml["downscaling_factor"],
+                )
+                logger.info(
+                    f"Gridded preciptation successfully downscaled with a factor {config_xml["downscaling_factor"]}"
+                )
+
+                # 2. Store the downscaled precipitation in a netCDF
+                compression_settings = {
+                    "zlib": True,
+                    "complevel": 4,  # Compression level (1-9), higher means more compression
+                }
+
+                precip_downscaled.to_netcdf(
+                    os.path.join(work_dir, "output", "downscaled_gridded_rainfall.nc"),
+                    encoding={var: compression_settings for var in precip_downscaled.data_vars},
+                )
+                logger.info("Downscaled gridded rainfall stored to a netCDF.")
+                logger.info("Finished downscaling procedure.")
+
+            else:
+                logger.error(
+                    "clim_filepath and/or downscaling_factor were not provided, but are needed for downscaling."
+                )
+                raise ValueError(
+                    "clim_filepath and/or downscaling_factor were not provided, but are needed for downscaling."
+                )
+
+        else:
+            logger.error(
+                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+            )
+            raise KeyError(
+                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+            )
 
     # pylint: disable=broad-exception-caught
     except Exception as exception:
         logger.exception(exception, exc_info=True)
 
     end = time.perf_counter()
-    logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
-    logger.info("Total adjustment workflow took %1.d minutes and %0.3f seconds", np.floor((end - start) / 60.0 ), ((end - start)%60))
+    logger.info("Total adjustment workflow took %s minutes", ((end - start) / 60.0))
 
 
 if __name__ == "__main__":
