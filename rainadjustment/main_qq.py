@@ -86,9 +86,9 @@ def create_grid_climatology(obs_dir: str,
     gridded_matches['station_y'] = station_y
     gridded_matches['station_name'] = station_name
     gridded_matches.to_netcdf('./intermediate/1_Grid_climatology.nc')
-    res = moving_window_date_selection(gridded_matches, 15, 2024)
-    res.to_netcdf('./intermediate/2_Grid_climatology.nc')
-    return res, gridded_matches
+    # res = moving_window_date_selection(gridded_matches, 15, 2024)
+    gridded_matches.to_netcdf('./intermediate/2_Grid_climatology.nc')
+    return gridded_matches
 
 
 def create_obs_climatology(obs_dir: str,
@@ -110,16 +110,16 @@ def create_obs_climatology(obs_dir: str,
 
     # Update the 'time' coordinate with the new times
 
-    res = moving_window_date_selection(obs, 15, 2024)
-    res.to_netcdf('./intermediate/Obs_climatology.nc')
-    return res
+    # res = moving_window_date_selection(obs, 15, 2024)
+    obs.to_netcdf('./intermediate/Obs_climatology.nc')
+    return obs
 
 
 def moving_window_date_selection(dataset, window_size=15, init_year=2024):
     dataset['time'] = [pd.to_datetime(x) for x in dataset.time.values]
     ref_date = datetime(init_year, 1, 1)
     date_list = []
-    for day in range(100):
+    for day in range(366):
         ref_date_it = ref_date + timedelta(days=day)
         first_date = ref_date_it - timedelta(days=window_size)
         last_date = ref_date_it + timedelta(days=window_size)
@@ -205,16 +205,23 @@ def Q_mapping_fitting(config_xml, window_size=15):
     obs_accumulated = moving_window_date_selection(obs_hist, 15)
     grid_accumulated = moving_window_date_selection(grid_hist, 15)
 
+    # Testing fix
+    obs_accumulated['reference_time'] = grid_accumulated.reference_time.values[:31]
+    grid_accumulated = grid_accumulated.sel({'reference_time': obs_accumulated.reference_time.values})
     factors = xr.apply_ufunc(
         create_qmapping_factors,
-        grid_accumulated,
-        obs_accumulated,
+        grid_accumulated.P,
+        obs_accumulated.P,
         input_core_dims=[['reference_time', 'delta_days'], ['reference_time', 'delta_days']],
         output_core_dims=[]
     )
     grid_hist.assign({'correction_factors': (['x', 'y', 'reference_time'], factors)})
     grid_hist.to_netcdf('./intermediate/Grid_climatology.nc')
 
+
+
+
+def Q_mapping_correction_factors(grid_frcst: Dataset, window_size=15):
     climatology = xr.load_dataset('./intermediate/Grid_climatology.nc')
     factors = climatology.correction_factors
     distr = climatology.P
@@ -229,8 +236,6 @@ def Q_mapping_fitting(config_xml, window_size=15):
         vectorize=True
     )
 
-
-def Q_mapping_correction_factors(grid_frcst: Dataset, window_size=15):
     return None
 
 def main_qq():
