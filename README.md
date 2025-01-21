@@ -10,7 +10,7 @@ Then, in a command prompt or shell, run:
 
 `git clone https://github.com/Deltares-research/pyRainAdjustment.git`
 
-`cd rainadjustment`
+`cd pyRainAdjustment`
 
 `mamba create -n rainadjustment python=3.12 poetry`
 
