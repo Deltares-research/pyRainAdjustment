@@ -18,6 +18,7 @@ netCDF4 = "^1.7.2"
 dask = "^2024.11.2"
 pandas = "^2.2.3"
 wradlib = "^2.3.0"
+scikit-gstat = "^1.0.19"
 
 
 [build-system]
