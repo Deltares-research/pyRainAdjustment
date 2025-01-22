@@ -11,6 +11,7 @@ Available functions:
 """
 
 import numpy as np
+import skgstat as skg
 import wradlib as wrl
 
 from utils.utils import get_rawatobs, get_interpolation_method
@@ -211,6 +212,23 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
         grid_values=grid_values,
     )
 
+    # Determine the variogram
+    if config_xml["variogram_model"] == "standard":
+        semivariogram = "1.0 Exp(10000.)"
+    elif config_xml["variogram_model"] == "auto_derive":
+        V = skg.Variogram(
+            obs_coords[ix],
+            obs_values[ix],
+            maxlag="median",
+            model="spherical",
+            n_lags=10,
+            normalize=False,
+            use_nugget=True,
+        )
+        semivariogram = f"1.0 Nug({V.describe()['nugget']}) + {V.describe()['sill']} Sph({V.describe()['effective_range']})"
+    else:
+        semivariogram = config_xml["variogram_model"]
+
     if rawatobs is not None:
         # Get the kriging method
         if config_xml["adjustment_method"] == "KED":
@@ -219,7 +237,7 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
                 grid_coords,
                 src_drift=rawatobs[ix],
                 trg_drift=grid_values,
-                cov="1.0 Exp(10000.)",
+                cov=semivariogram,
                 nnearest=config_xml["kriging_n_gauges_to_use"],
             )
             # Apply the method

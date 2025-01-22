@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<generalAdapterRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/generalAdapterRun.xsd">
+	<general>
+		<description>Adjust a gridded rainfall product with the available rain gauges</description>
+		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
+		<workDir>%ROOT_DIR%</workDir>
+		<exportDir>%ROOT_DIR%/input</exportDir>
+		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
+		<exportIdMap>IdDownscaling</exportIdMap>
+		<importDir>%ROOT_DIR%/output</importDir>
+		<importIdMap>IdAdjustmentFactor</importIdMap>
+		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
+		<dumpDir>%ROOT_DIR%</dumpDir>
+		<diagnosticFile>%ROOT_DIR%/pyRainAdjustment_module_diag.xml</diagnosticFile>
+		<missVal>-999.0</missVal>
+	</general>
+	<activities>
+		<startUpActivities>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/input/*</filter>
+			</purgeActivity>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/output/*</filter>
+			</purgeActivity>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/logs/*</filter>
+			</purgeActivity>
+		</startUpActivities>
+		<exportActivities>
+			<exportDataSetActivity>
+				<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			</exportDataSetActivity>
+			<exportNetcdfActivity>
+				<exportFile>Precip_Gauges.nc</exportFile>
+				<netcdfFormat>netcdf4</netcdfFormat>
+				<timeSeriesSets>
+					<timeSeriesSet>
+					   <moduleInstanceId>$ID_METEO_INPUT$</moduleInstanceId>
+					   <valueType>scalar</valueType>
+					   <parameterId>P_obs</parameterId>
+					   <locationSetId>sites</locationSetId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+						<relativeViewPeriod unit="day" end="0" start="-1" startOverrulable="true" endOverrulable="false"/>
+						<readWriteMode>read only</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+				<checkMissing>true</checkMissing>
+			</exportNetcdfActivity>
+			<exportNetcdfActivity>
+				<exportFile>gridded_rainfall.nc</exportFile>
+				<netcdfFormat>netcdf4</netcdfFormat>
+				<timeSeriesSets>
+					<timeSeriesSet>
+						<moduleInstanceId>$PRECIP_ID_TO_ADJUST$</moduleInstanceId>
+						<valueType>grid</valueType>
+						<parameterId>P_obs</parameterId>
+						<locationId>$LOCATION_ID$</locationId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+						<relativeViewPeriod unit="day" end="0" start="-1" startOverrulable="true" endOverrulable="false"/>
+						<readWriteMode>read only</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+				<checkMissing>true</checkMissing>
+			</exportNetcdfActivity>
+			<exportRunFileActivity>
+				<exportFile>adjustment_settings.xml</exportFile>
+				<properties>
+					<string key="adjustment_method" value="$ADJUSTMENT_METHOD$"/>
+					<string key="statistical_function" value="$STATISTICAL_FUNCTION$"/>					
+					<float key="threshold" value="$THRESHOLD$"/>
+					<float key="max_change_factor" value="$MAX_CHANGE_FACTOR$"/>
+					<int key="nearest_cells_to_use" value="$NEAREST_CELLS_TO_USE$"/>
+					<int key="min_gauges" value="$MIN_GAUGES$"/>
+					<int key="kriging_n_gauges" value="$KRIGING_N_GAUGES$"/>
+					<string key="interpolation_method" value="$INTERPOL_METHOD$"/>
+					<string key="variogram_model" value="$VARIOGRAM_MODEL$"/>
+				</properties>
+			</exportRunFileActivity>
+		</exportActivities>
+		<executeActivities>
+			<executeActivity>
+				<command>
+					<executable>%REGION_HOME%/Modules/python/python.exe</executable>
+				</command>
+				<arguments>
+					<argument>main.py</argument>
+					<argument>--xml_config</argument>
+					<argument>input/adjustment_settings.xml</argument>
+					<argument>--requested_functionality</argument>
+					<argument>adjustment</argument>
+				</arguments>
+				<console>
+					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_pyRainAdjustment_console.txt</redirectToLogFile>
+				</console>
+				<logFile>
+					<file>%ROOT_DIR%/logs/log_pyRainAdjustment.txt</file>
+                    <infoLinePattern>*INFO*</infoLinePattern>
+                    <warningLinePattern>*WARNING*</warningLinePattern>
+                    <debugLinePattern>*DEBUG*</debugLinePattern>
+                    <errorLinePattern>*ERROR*</errorLinePattern>
+				</logFile>
+				<timeOut>4000000</timeOut>
+				<ignoreDiagnostics>true</ignoreDiagnostics>
+			</executeActivity>
+		</executeActivities>
+		<importActivities>
+			<importNetcdfActivity>
+				<importFile>%ROOT_DIR%/output/adjustment_factors_gridded_rainfall.nc</importFile>
+				<timeSeriesSets>
+					<timeSeriesSet>
+						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+						<valueType>grid</valueType>
+						<parameterId>F_calc</parameterId>
+						<locationId>$LOCATION_ID$</locationId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+						<readWriteMode>add originals</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+			</importNetcdfActivity>
+		</importActivities>
+	</activities>
+</generalAdapterRun>

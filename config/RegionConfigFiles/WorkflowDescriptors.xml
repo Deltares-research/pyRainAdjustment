@@ -15,22 +15,49 @@
 			<int key="TIMESTEP" value="1"/>
 			<int key="KRIGING_N_GAUGES" value="12"/>
 			<string key="INTERPOL_METHOD" value="Idw"/>
+			<string key="VARIOGRAM_MODEL" value="auto_derive"/>
 		</properties>
 	</workflowDescriptor>
 	<workflowDescriptor id="Meteo_Rain_Downscaling_ERA5" name="Downscale ERA5" visible="true" forecast="false" autoApprove="true" allowApprove="true">
 		<properties>
+			<string key="PRECIP_ID_TO_DOWNSCALE" value="ImportERA5"/>
 			<string key="MODULEINSTANCE_ID" value="pyRainAdjustment"/>
 			<string key="LOCATION_ID_IN" value="ERA5"/>
-			<string key="LOCATION_ID_OUT" value="ERA5_grid_downscaled"/>
+			<string key="LOCATION_ID_OUT" value="ERA5_highres"/>
 			<string key="PARAMETER" value="P_obs"/>
 			<string key="CLIM_FILEPATH" value="%REGION_HOME%/Modules/pyRainAdjustment/clim/wc2.1_30s_prec.nc"/>
-			<int key="DOWNSCALING_FACTOR" value="3"/>
+			<int key="DOWNSCALING_FACTOR" value="10"/>
+		</properties>
+	</workflowDescriptor>
+	<workflowDescriptor id="Meteo_Rain_Downscaling_Gauge_Adjustment_ERA5" name="Downscale and Bias correct ERA5" visible="true" forecast="false" autoApprove="true" allowApprove="true">
+		<properties>
+			<string key="PRECIP_ID_TO_DOWNSCALE" value="ImportERA5"/>
+			<string key="MODULEINSTANCE_ID" value="pyRainAdjustment"/>
+			<string key="PRECIP_ID_TO_ADJUST" value="pyRainAdjustment"/>
+			<string key="ID_METEO_INPUT" value="ImportObservedPrecipSynops"/>
+			<string key="LOCATION_ID" value="ERA5_highres"/>
+			<string key="LOCATION_ID_IN" value="ERA5"/>
+			<string key="LOCATION_ID_OUT" value="ERA5_highres"/>
+			<string key="PARAMETER" value="P_obs"/>
+			<string key="CLIM_FILEPATH" value="%REGION_HOME%/Modules/pyRainAdjustment/clim/wc2.1_30s_prec.nc"/>
+			<int key="DOWNSCALING_FACTOR" value="10"/>
+			<string key="ADJUSTMENT_METHOD" value="KED"/>
+			<string key="STATISTICAL_FUNCTION" value="median"/>
+			<float key="THRESHOLD" value="0.01"/>
+			<float key="MAX_CHANGE_FACTOR" value="2.0"/>
+			<int key="NEAREST_CELLS_TO_USE" value="9"/>
+			<int key="MIN_GAUGES" value="5"/>
+			<int key="TIMESTEP" value="1"/>
+			<int key="KRIGING_N_GAUGES" value="20"/>
+			<string key="INTERPOL_METHOD" value="Idw"/>
+			<string key="VARIOGRAM_MODEL" value="auto_derive"/>
 		</properties>
 	</workflowDescriptor>
 	<rootNode>
 		<node name="Process">
 			<workflowId>Meteo_Rain_Gauge_Adjustment_HSAF</workflowId>
 			<workflowId>Meteo_Rain_Downscaling_HSAF</workflowId>
+			<workflowId>Meteo_Rain_Downscaling_Gauge_Adjustment_ERA5</workflowId>
 		</node>
 	</rootNode>
 </workflowDescriptors>
