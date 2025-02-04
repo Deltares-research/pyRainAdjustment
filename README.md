@@ -46,3 +46,7 @@ For commits, we follow the [conventional commits specification](https://www.conv
 - `docs`: changes into documentation, e.g. add usage example for the module..
 - `test`: adding or updating tests, eg add integration tests using detox.
 - `chore`: tooling changes, e.g. change CI config.
+
+### Python style conventions
+
+For predefined Python style conventions of this package, see [/docs/Conventions.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Conventions.md).
