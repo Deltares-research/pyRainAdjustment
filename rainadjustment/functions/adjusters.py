@@ -216,16 +216,22 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
     if config_xml["variogram_model"] == "standard":
         semivariogram = "1.0 Exp(10000.)"
     elif config_xml["variogram_model"] == "auto_derive":
-        V = skg.Variogram(
-            obs_coords[ix],
-            obs_values[ix],
-            maxlag="median",
-            model="spherical",
-            n_lags=10,
-            normalize=False,
-            use_nugget=True,
-        )
-        semivariogram = f"1.0 Nug({V.describe()['nugget']}) + {V.describe()['sill']} Sph({V.describe()['effective_range']})"
+        try:
+            V = skg.Variogram(
+                obs_coords[ix],
+                obs_values[ix],
+                maxlag="median",
+                model="spherical",
+                n_lags=10,
+                normalize=False,
+                use_nugget=True,
+            )
+            semivariogram = f"1.0 Nug({V.describe()['nugget']}) + {V.describe()['sill']} Sph({V.describe()['effective_range']})"
+        except ValueError:
+            print(
+                "Not able to derive the Variogram, we'll continue with the default value of 1.0 Exp(10000.)"
+            )
+            semivariogram = "1.0 Exp(10000.)"
     else:
         semivariogram = config_xml["variogram_model"]
 
