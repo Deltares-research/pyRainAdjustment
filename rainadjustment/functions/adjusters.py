@@ -227,7 +227,7 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
                 use_nugget=True,
             )
             semivariogram = f"1.0 Nug({V.describe()['nugget']}) + {V.describe()['sill']} Sph({V.describe()['effective_range']})"
-        except (ValueError, RuntimeError) as e:
+        except (AttributeError, ValueError, RuntimeError) as e:
             print(
                 "Not able to derive the Variogram, we'll continue with the default value of 1.0 Exp(10000.)"
             )
