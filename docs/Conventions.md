@@ -3,8 +3,8 @@
 For contributions to the Python code in this folder, we try to stick to the following conventions:
 
 ## Dimension names:
-- x
-- y
+- lon
+- lat
 - time
 - Main variable of gridded precipitation: default is `P`, but if the dataset has only variable, this is flexible in the code. 
 
