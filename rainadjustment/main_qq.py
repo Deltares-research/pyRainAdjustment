@@ -71,8 +71,6 @@ def attach_valid_time(dataset, t_name, dt_name):
     dataset = dataset.assign_coords(valid_time=(data_valid_time))
     return dataset
 
-
-
 def create_grid_climatology(obs_dir: str,
                             grid_dir: str,
                             file_name: str,
@@ -120,7 +118,7 @@ def create_obs_climatology(obs_dir: str,
     obs.to_netcdf('./intermediate/Obs_climatology_2012_2024.nc')
     return obs
 
-
+## No longer used
 def moving_window_date_selection(dataset, window_size=15, init_year=2024):
     dataset['time'] = [pd.to_datetime(x) for x in dataset.time.values]
     ref_date = datetime(init_year, 1, 1)
