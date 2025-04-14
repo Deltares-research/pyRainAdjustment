@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformationModule version="1.0" xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/transformationModule.xsd">
+	<!-- Adjust the gridded rainfall product with the calculated adjustment factors -->
+	<variable>
+		<variableId>Rain_grid_original</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$PRECIP_ID_TO_ADJUST$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>P_obs</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="day" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>read only</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<variable>
+		<variableId>Rain_grid_adjusted</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>P_obs</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="day" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>add originals</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<variable>
+		<variableId>Adjustment_Factor</variableId>
+		<timeSeriesSet>
+			<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			<valueType>grid</valueType>
+			<parameterId>F_calc</parameterId>
+			<locationId>$LOCATION_ID$</locationId>
+			<timeSeriesType>external historical</timeSeriesType>
+			<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+			<relativeViewPeriod unit="day" start="-1" end="0" startOverrulable="true"/>
+			<readWriteMode>read only</readWriteMode>
+		</timeSeriesSet>
+	</variable>
+	<!--Transformations-->
+	<transformation id="Adjust_rain_grid">
+		<user>
+			<simple>
+				<expression>Rain_grid_original*Adjustment_Factor</expression>
+				<outputVariable>
+					<variableId>Rain_grid_adjusted</variableId>
+				</outputVariable>
+			</simple>
+		</user>
+	</transformation>
+</transformationModule>

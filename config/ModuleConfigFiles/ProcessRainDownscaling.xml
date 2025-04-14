@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<generalAdapterRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews http://fews.wldelft.nl/schemas/version1.0/generalAdapterRun.xsd">
+	<general>
+		<description>Downscale a gridded rainfall product with a predefined downscaling factor</description>
+		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
+		<workDir>%ROOT_DIR%</workDir>
+		<exportDir>%ROOT_DIR%/input</exportDir>
+		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
+		<exportIdMap>IdDownscaling</exportIdMap>
+		<importDir>%ROOT_DIR%/output</importDir>
+		<importIdMap>IdDownscaling</importIdMap>
+		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
+		<dumpDir>%ROOT_DIR%</dumpDir>
+		<diagnosticFile>%ROOT_DIR%/pyRainAdjustment_module_diag.xml</diagnosticFile>
+	</general>
+	<activities>
+		<startUpActivities>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/input/*</filter>
+			</purgeActivity>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/output/*</filter>
+			</purgeActivity>
+			<purgeActivity>
+				<filter>%ROOT_DIR%/logs/*</filter>
+			</purgeActivity>
+		</startUpActivities>
+		<exportActivities>
+			<exportDataSetActivity>
+				<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+			</exportDataSetActivity>
+			<exportNetcdfActivity>
+				<exportFile>gridded_rainfall.nc</exportFile>
+				<netcdfFormat>netcdf4</netcdfFormat>
+				<timeSeriesSets>
+					<timeSeriesSet>
+						<moduleInstanceId>$PRECIP_ID_TO_DOWNSCALE$</moduleInstanceId>
+						<valueType>grid</valueType>
+						<parameterId>$PARAMETER$</parameterId>
+						<locationId>$LOCATION_ID_IN$</locationId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="1" timeZone="GMT"/>
+						<relativeViewPeriod unit="day" end="0" start="-1" startOverrulable="true" endOverrulable="false"/>
+						<readWriteMode>read only</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+				<checkMissing>true</checkMissing>
+			</exportNetcdfActivity>
+			<exportRunFileActivity>
+				<exportFile>downscaling_settings.xml</exportFile>
+				<properties>
+					<string key="clim_filepath" value="$CLIM_FILEPATH$"/>
+					<int key="downscaling_factor" value="$DOWNSCALING_FACTOR$"/>
+				</properties>
+			</exportRunFileActivity>
+		</exportActivities>
+		<executeActivities>
+			<executeActivity>
+				<command>
+					<executable>%REGION_HOME%/Modules/python/python.exe</executable>
+				</command>
+				<arguments>
+					<argument>main.py</argument>
+					<argument>--xml_config</argument>
+					<argument>input/downscaling_settings.xml</argument>
+					<argument>--requested_functionality</argument>
+					<argument>downscaling</argument>
+				</arguments>
+				<console>
+					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_pyRainAdjustment_console.txt</redirectToLogFile>
+				</console>
+				<logFile>
+					<file>%ROOT_DIR%/logs/log_pyRainAdjustment.txt</file>
+                    <infoLinePattern>*INFO*</infoLinePattern>
+                    <warningLinePattern>*WARNING*</warningLinePattern>
+                    <debugLinePattern>*DEBUG*</debugLinePattern>
+                    <errorLinePattern>*ERROR*</errorLinePattern>
+				</logFile>
+				<timeOut>4000000</timeOut>
+				<ignoreDiagnostics>true</ignoreDiagnostics>
+			</executeActivity>
+		</executeActivities>
+		<importActivities>
+			<importNetcdfActivity>
+				<importFile>%ROOT_DIR%/output/downscaled_gridded_rainfall.nc</importFile>
+				<timeSeriesSets>
+					<timeSeriesSet>
+						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+						<valueType>grid</valueType>
+						<parameterId>$PARAMETER$</parameterId>
+						<locationId>$LOCATION_ID_OUT$</locationId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="1" timeZone="GMT"/>
+						<readWriteMode>add originals</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+			</importNetcdfActivity>
+		</importActivities>
+	</activities>
+</generalAdapterRun>

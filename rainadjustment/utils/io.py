@@ -53,14 +53,26 @@ def obtain_gauge_information(obs_dir, obs_identifier):
 
             # Per station, store the location, station number and the rainfall
             # value
-            precip_gauges = ds.P[-1]
+            if "P" in ds.var():
+                precip_gauges = ds.P[-1]
+            else:
+                var_names = list(ds.var())
+                precip_var_name = [element for element in var_names if element not in ["crs", "z"]]
+                # Check that there is only one precip_var_name
+                if len(precip_var_name) == 1:
+                    precip_gauges = ds[precip_var_name]
+                else:
+                    raise KeyError(
+                        f"More than one variable provided in the gauge dataset. Variables found are: {precip_var_name}"
+                    )
+
             # Check the dimensions of the DataArray and if needed, adjust them
             precip_gauges = check_dimensions(precip=precip_gauges)
 
             for station_index in range(precip_gauges.shape[0]):
                 # Get the station information per station
-                station_lat = precip_gauges[station_index].y.values
-                station_lon = precip_gauges[station_index].x.values
+                station_lat = precip_gauges[station_index].lat.values
+                station_lon = precip_gauges[station_index].lon.values
                 station_name = precip_gauges[station_index].station_id.values
 
                 # Append all the values to the output list
@@ -96,16 +108,39 @@ def obtain_gridded_rainfall_information(grid_file):
         (lons, lats)
     """
     ds_gridded = xr.open_dataset(grid_file)
-    precip_gridded = ds_gridded.P
+
+    if "P" in ds_gridded.var():
+        precip_gridded = ds_gridded.P
+    else:
+        var_names = list(ds_gridded.var())
+        precip_var_name = [element for element in var_names if element not in ["crs", "z"]]
+        # Check that there is only one precip_var_name
+        if len(precip_var_name) == 1:
+            precip_gridded = ds_gridded[precip_var_name]
+        else:
+            raise KeyError(
+                f"More than one variable provided in the gridded precip dataset. Variables found are: {precip_var_name}"
+            )
 
     # Check the dimensions of the DataArray and if needed, adjust them
     precip_gridded = check_dimensions(precip=precip_gridded)
 
     # Get the grid information
-    grid_lats = precip_gridded.y.values
-    grid_lons = precip_gridded.x.values
-    grid_coords = wrl.util.gridaspoints(grid_lats, grid_lons)
-    grid_shape = len(grid_lats), len(grid_lons)
+    grid_lats = precip_gridded.lat.values
+    grid_lons = precip_gridded.lon.values
+    if len(grid_lats.shape) == 1:
+        grid_coords = wrl.util.gridaspoints(grid_lats, grid_lons)
+        grid_shape = len(grid_lats), len(grid_lons)
+    else:
+        grid_coords = np.array(
+            [
+                [float(grid_lons[i, j]), float(grid_lats[i, j])]
+                for i in range(grid_lats.shape[0])
+                for j in range(grid_lats.shape[1])
+            ]
+        )
+        grid_shape = grid_lats.shape
+
     grid_values = np.array(
         [precip_gridded[t].values.flatten() for t in range(precip_gridded.shape[0])]
     )
@@ -198,6 +233,9 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
 
 def check_dimensions(precip):
     """
+    As we only calculate in WGS84 latitude and longitude x- and y-values,
+    we first check if these dimensions exist.
+
     Parameters
     ----------
     precip: xr.DataArray
@@ -212,20 +250,20 @@ def check_dimensions(precip):
     """
     # Check if the dataset contains x and y. If it only contains lat, lon
     # or latitude and longitude, rename.
-    if "x" not in precip.coords:
-        if "lon" in precip.coords:
-            precip = precip.rename({"lon": "x"})
-        elif "longitude" in precip.coords:
-            precip = precip.rename({"longitude": "x"})
+    if "lon" not in precip.coords:
+        if "longitude" in precip.coords:
+            precip = precip.rename({"longitude": "lon"})
+        elif "x" in precip.coords:
+            precip = precip.rename({"x": "lon"})
         else:
             raise KeyError(
                 "The provided DataArray does not contain the dimensions x, lon or longitude"
             )
-    if "y" not in precip.coords:
-        if "lat" in precip.coords:
-            precip = precip.rename({"lat": "y"})
-        elif "latitude" in precip.coords:
-            precip = precip.rename({"latitude": "y"})
+    if "lat" not in precip.coords:
+        if "latitude" in precip.coords:
+            precip = precip.rename({"latitude": "lat"})
+        elif "y" in precip.coords:
+            precip = precip.rename({"y": "lat"})
         else:
             raise KeyError(
                 "The provided gridded DataArray does not contain the dimensions y, lat or latitude"

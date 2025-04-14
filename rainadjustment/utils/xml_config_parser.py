@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Last modified 01-10-2024
-@authors: Ruben Imhoff (Deltares) and Mees Radema (Deltares)
-
 Function to read xml runfile from Delft-FEWS, which are used as initial
 settings for radar rainfall nowcasting with pysteps.
 
@@ -12,11 +9,6 @@ The initial settings are used in the pysteps run script.
 import xml
 from xml import dom
 from xml.dom import minidom
-
-
-# --------------------------------------------------------------------------- #
-# The function
-# --------------------------------------------------------------------------- #
 
 
 def parse_run_xml(xml_file):
@@ -94,6 +86,7 @@ def parse_run_xml(xml_file):
     statistical_function = "median"
     interpolation_method = "Idw"
     clim_filepath = None
+    variogram_model = "standard"
 
     output_dict = {
         "work_dir": work_dir,
@@ -107,6 +100,7 @@ def parse_run_xml(xml_file):
         "statistical_function": statistical_function,
         "interpolation_method": interpolation_method,
         "clim_filepath": clim_filepath,
+        "variogram_model": variogram_model,
     }
 
     properties = doc.getElementsByTagName("float")
