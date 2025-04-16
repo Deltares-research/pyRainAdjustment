@@ -10,9 +10,4 @@
 		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 		<moduleConfigFileName>ProcessRainGaugeAdjustment</moduleConfigFileName>
 	</activity>
-	<activity>
-		<runIndependent>false</runIndependent>
-		<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
-		<moduleConfigFileName>ProcessApplyRainGaugeAdjustment</moduleConfigFileName>
-	</activity>
 </workflow>

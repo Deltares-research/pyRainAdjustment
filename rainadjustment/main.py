@@ -112,6 +112,8 @@ def main():
 
             # 4. perform correction
             adjustment_factor_out = []
+            adjusted_grid_out = []
+
             for t in range(grid_values.shape[0]):
                 adjusted_values = apply_adjustment(
                     config_xml=config_xml,
@@ -124,10 +126,10 @@ def main():
                 # A final check to ensure that the adjustment has taken place.
                 if np.array_equal(adjusted_values, grid_values[t]):
                     if np.isfinite(grid_values).any():
-                        logger.warning(
+                        logger.info(
                             f"Adjustment for time step {str(t + 1)} out of {str(grid_values.shape[0])} has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step."
                         )
-                        adjusted_values_checked = adjusted_values * np.nan
+                        adjusted_values_checked = adjusted_values.copy()
                     else:
                         logger.warning(
                             f"Adjustment for time step {str(t + 1)} out of {str(grid_values.shape[0])} has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step."
@@ -151,6 +153,9 @@ def main():
                 # 5. Get the adjustment factor
                 adjustment_factor = adjusted_values_checked / grid_values[t]
                 # Make sure there are no negative numbers and no nans in the adjustment
+                adjusted_values_checked = np.where(
+                    adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
+                )
                 adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
                 adjustment_factor = np.nan_to_num(
                     adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0
@@ -158,14 +163,24 @@ def main():
 
                 # Reshape and store as a variable
                 adjustment_factor_out.append(np.reshape(adjustment_factor, grid_shape))
+                adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
-            # 6. Store it in a netCDF
+            # 6. Store both datasets in a netCDF
             store_as_netcdf(
-                adjustment_factor=np.array(adjustment_factor_out),
+                gridded_array=np.array(adjustment_factor_out),
                 dataset_example=xr.open_dataset(
                     os.path.join(work_dir, "input", "gridded_rainfall.nc")
                 ),
+                variable_name="adjustment_factor",
                 outfile=os.path.join(work_dir, "output", "adjustment_factors_gridded_rainfall.nc"),
+            )
+            store_as_netcdf(
+                gridded_array=np.array(adjusted_grid_out),
+                dataset_example=xr.open_dataset(
+                    os.path.join(work_dir, "input", "gridded_rainfall.nc")
+                ),
+                variable_name="P",
+                outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
             )
             logger.info("Adjusted gridded rainfall stored to a netCDF.")
             logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
