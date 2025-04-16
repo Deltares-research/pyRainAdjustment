@@ -148,18 +148,20 @@ def obtain_gridded_rainfall_information(grid_file):
     return grid_coords, grid_values, grid_shape
 
 
-def store_as_netcdf(adjustment_factor, dataset_example, outfile):
+def store_as_netcdf(gridded_array, dataset_example, variable_name, outfile):
     """
     Saves the output adjustment factors to a new NetCDF file.
 
     Parameters
     ----------
-        adjustment_factor: ndarray
+        gridded_array: ndarray
             3D array (time, y ,x) containing the adjustment factors on the
             original gridded rainfall product grid.
         dataset_example: xr DataSet
             The original gridded rainfall xr DataSet which will
             form the blue print for the output dataset.
+        variable_name: str
+            The name of the variable that should be saved.
         outfile: str
             The output file location.
 
@@ -170,9 +172,9 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     # Make a dataset out of the array
     output_dataset = xr.Dataset(
         {
-            "adjustment_factor": (
+            f"{variable_name}": (
                 ("time", "y", "x"),
-                adjustment_factor,
+                gridded_array,
             )
         },
         coords={
@@ -216,10 +218,10 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     )
 
     # Add attributes to data variables
-    output_dataset["adjustment_factor"].attrs.update(
+    output_dataset[f"{variable_name}"].attrs.update(
         {
-            "long_name": "Adjustment Factor",
-            "standard_name": "adjustment_factor",
+            "long_name": f"{variable_name}",
+            "standard_name": f"{variable_name}",
             "units": "-",
         }
     )

@@ -120,6 +120,20 @@
 					</timeSeriesSet>
 				</timeSeriesSets>
 			</importNetcdfActivity>
+			<importNetcdfActivity>
+				<importFile>%ROOT_DIR%/output/adjusted_gridded_rainfall.nc</importFile>
+				<timeSeriesSets>
+					<timeSeriesSet>
+						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
+						<valueType>grid</valueType>
+						<parameterId>P_obs</parameterId>
+						<locationId>$LOCATION_ID$</locationId>
+						<timeSeriesType>external historical</timeSeriesType>
+						<timeStep unit="day" multiplier="$TIMESTEP$" timeZone="GMT"/>
+						<readWriteMode>add originals</readWriteMode>
+					</timeSeriesSet>
+				</timeSeriesSets>
+			</importNetcdfActivity>
 		</importActivities>
 	</activities>
 </generalAdapterRun>
