@@ -48,7 +48,7 @@ def main():
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn = os.path.join(work_dir, "logs", f"log_pyRainAdjustment.txt")
+    logfn = os.path.join(work_dir, "logs", "log_pyRainAdjustment.txt")
     logging.basicConfig(
         filename=logfn,
         filemode="a",
@@ -183,7 +183,9 @@ def main():
                 outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
             )
             logger.info("Adjusted gridded rainfall stored to a netCDF.")
-            logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
+            logger.info(
+                "Finished rain gauge adjustment. %s gauges were provided.", str(len(obs_names))
+            )
 
         elif requested_functionality == "downscaling":
             # 1. Downscale the precipitation
@@ -197,7 +199,8 @@ def main():
                     downscale_factor=config_xml["downscaling_factor"],
                 )
                 logger.info(
-                    f"Gridded preciptation successfully downscaled with a factor {config_xml["downscaling_factor"]}"
+                    "Gridded preciptation successfully downscaled with a factor %s",
+                    config_xml["downscaling_factor"],
                 )
 
                 # 2. Store the downscaled precipitation in a netCDF
@@ -223,10 +226,12 @@ def main():
 
         else:
             logger.error(
-                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+                "The requested functionality %s is not one of the supported options. Make sure to pick one from adjustment or downscaling.",
+                requested_functionality,
             )
             raise KeyError(
-                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+                "The requested functionality %s is not one of the supported options. Make sure to pick one from adjustment or downscaling.",
+                requested_functionality,
             )
 
     # pylint: disable=broad-exception-caught
