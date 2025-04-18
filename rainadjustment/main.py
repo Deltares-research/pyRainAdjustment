@@ -81,7 +81,8 @@ def main():
             ]
             if config_xml["adjustment_method"] not in adjustment_methods:
                 logger.error(
-                    f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}"
+                    "Requested adjustment method not present. Select an adjustment method from %s",
+                    adjustment_methods,
                 )
                 raise KeyError("Requested adjustment method not present")
             # Make sure the threshold is always 0.0 when the adjustment_method
@@ -91,13 +92,13 @@ def main():
 
             # 2. Get the rain gauge information
             obs_coords, obs_names, obs_values = obtain_gauge_information(
-                gauge_folder=os.path.join(work_dir, "input")
+                gauge_folder=os.path.join(work_dir, "input"), logger=logger
             )
             logger.info("Rain gauge information read successfully.")
 
             # 3. obtain gridded rainfall field
             grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
-                grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
+                grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc"), logger=logger
             )
             logger.info("Gridded rainfall information read successfully.")
 
@@ -121,6 +122,7 @@ def main():
                     obs_values=obs_values[t],
                     grid_coords=grid_coords,
                     grid_values=grid_values[t],
+                    logger=logger,
                 )
 
                 # A final check to ensure that the adjustment has taken place.
@@ -145,7 +147,7 @@ def main():
                         original_values=grid_values[t],
                         max_change_factor=config_xml["max_change_factor"],
                     )
-                    if np.array_equal(adjusted_values_checked, adjusted_values) == False:
+                    if np.array_equal(adjusted_values_checked, adjusted_values) is False:
                         logger.warning(
                             "Some of the adjusted values were above the set maximum adjustment factor."
                         )
@@ -197,6 +199,7 @@ def main():
                     precip_orig=os.path.join(work_dir, "input", "gridded_rainfall.nc"),
                     clim_file=config_xml["clim_filepath"],
                     downscale_factor=config_xml["downscaling_factor"],
+                    logger=logger,
                 )
                 logger.info(
                     "Gridded preciptation successfully downscaled with a factor %s",
