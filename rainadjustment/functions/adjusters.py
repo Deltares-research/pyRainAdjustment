@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Functions to adjust the gridded rainfall observations / estimates with rain 
+Functions to adjust the gridded rainfall observations / estimates with rain
 gauge observations.
 
 Available functions:
@@ -17,7 +17,7 @@ import wradlib as wrl
 from utils.utils import get_rawatobs, get_interpolation_method
 
 
-def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values):
+def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values, logger):
     """
     Main function to apply the adjustment on the gridded rainfall product.
 
@@ -37,6 +37,8 @@ def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_value
     grid_values: ndarray(float)
         List of floats containing the gridded rainfall value per (lat, lon)
         coordinate in the grid.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
 
     Returns
@@ -52,6 +54,7 @@ def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_value
             obs_values=obs_values,
             grid_coords=grid_coords,
             grid_values=grid_values,
+            logger=logger,
         )
     else:
         adjuster = __obtain_adjustment_method(
@@ -112,7 +115,7 @@ def check_adjustment_factor(
     return checked_adjusted_values
 
 
-def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
+def __obtain_adjustment_method(config_xml, obs_coords, grid_coords, logger):
     """
     Parameters
     ----------
@@ -124,6 +127,8 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
     grid_coords: ndarray(float)
         List of floats containing the latitude and longitude values of the
         gridded rainfall as (lat, lon).
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
 
     Returns
@@ -146,7 +151,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             minval=config_xml["threshold"],
             mfb_args={"method": "median"},
         )
-    if adjustment_method == "Additive":
+    elif adjustment_method == "Additive":
         return wrl.adjust.AdjustBase(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
@@ -156,7 +161,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             minval=config_xml["threshold"],
             ipclass=interpolation_method,
         )
-    if adjustment_method == "Multiplicative":
+    elif adjustment_method == "Multiplicative":
         return wrl.adjust.AdjustMultiply(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
@@ -166,7 +171,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             minval=config_xml["threshold"],
             ipclass=interpolation_method,
         )
-    if adjustment_method == "Mixed":
+    elif adjustment_method == "Mixed":
         return wrl.adjust.AdjustMixed(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
@@ -176,9 +181,18 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords):
             minval=config_xml["threshold"],
             ipclass=interpolation_method,
         )
+    else:
+        logger.error(
+            "Requested adjustment method %s not available, choose from ['MFB', 'Additive', 'Multiplicative', 'Mixed' and 'KED']",
+            adjustment_method,
+        )
+        raise KeyError(
+            "Requested adjustment method %s not available, choose from ['MFB', 'Additive', 'Multiplicative', 'Mixed' and 'KED']",
+            adjustment_method,
+        )
 
 
-def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values):
+def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values, logger):
     """
     Parameters
     ----------
@@ -196,6 +210,8 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
     grid_values: ndarray(float)
         List of floats containing the gridded rainfall value per (lat, lon)
         coordinate in the grid.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
 
     Returns
@@ -217,7 +233,7 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
         semivariogram = "1.0 Exp(10000.)"
     elif config_xml["variogram_model"] == "auto_derive":
         try:
-            V = skg.Variogram(
+            skg_variogram = skg.Variogram(
                 obs_coords[ix],
                 obs_values[ix],
                 maxlag="median",
@@ -226,9 +242,9 @@ def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_v
                 normalize=False,
                 use_nugget=True,
             )
-            semivariogram = f"1.0 Nug({V.describe()['nugget']}) + {V.describe()['sill']} Sph({V.describe()['effective_range']})"
+            semivariogram = f"1.0 Nug({skg_variogram.describe()['nugget']}) + {skg_variogram.describe()['sill']} Sph({skg_variogram.describe()['effective_range']})"
         except (AttributeError, ValueError, RuntimeError) as e:
-            print(
+            logger.info(
                 "Not able to derive the Variogram, we'll continue with the default value of 1.0 Exp(10000.)"
             )
             semivariogram = "1.0 Exp(10000.)"

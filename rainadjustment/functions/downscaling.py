@@ -12,7 +12,7 @@ from rasterio.enums import Resampling
 from utils.io import check_dimensions
 
 
-def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
+def downscale_gridded_precip(precip_orig, clim_file, downscale_factor, logger):
     """
     Parameters
     ----------
@@ -26,6 +26,8 @@ def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
         For instance, a factor of 2 indicates that the downscaled precipitation
         will have a grid resolution that is two times finer than the original
         grid resolution.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
     Returns
     ------
@@ -34,7 +36,7 @@ def downscale_gridded_precip(precip_orig, clim_file, downscale_factor):
     """
     # First read the data
     precip_coarse = xr.open_dataset(precip_orig)
-    precip_coarse = check_dimensions(precip_coarse)
+    precip_coarse = check_dimensions(precip_coarse, logger=logger)
 
     # Write the CRS of the data
     precip_coarse = precip_coarse.rio.write_crs(precip_coarse.crs.attrs["epsg_code"])

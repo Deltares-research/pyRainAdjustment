@@ -48,7 +48,7 @@ def main():
     # Set up the logger
     if not os.path.isdir(os.path.join(work_dir, "logs")):
         os.mkdir(os.path.join(work_dir, "logs"))
-    logfn = os.path.join(work_dir, "logs", f"log_pyRainAdjustment.txt")
+    logfn = os.path.join(work_dir, "logs", "log_pyRainAdjustment.txt")
     logging.basicConfig(
         filename=logfn,
         filemode="a",
@@ -81,7 +81,8 @@ def main():
             ]
             if config_xml["adjustment_method"] not in adjustment_methods:
                 logger.error(
-                    f"Requested adjustment method not present. Select an adjustment method from {adjustment_methods}"
+                    "Requested adjustment method not present. Select an adjustment method from %s",
+                    adjustment_methods,
                 )
                 raise KeyError("Requested adjustment method not present")
             # Make sure the threshold is always 0.0 when the adjustment_method
@@ -91,13 +92,13 @@ def main():
 
             # 2. Get the rain gauge information
             obs_coords, obs_names, obs_values = obtain_gauge_information(
-                gauge_folder=os.path.join(work_dir, "input")
+                gauge_folder=os.path.join(work_dir, "input"), logger=logger
             )
             logger.info("Rain gauge information read successfully.")
 
             # 3. obtain gridded rainfall field
             grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
-                grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc")
+                grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc"), logger=logger
             )
             logger.info("Gridded rainfall information read successfully.")
 
@@ -121,6 +122,7 @@ def main():
                     obs_values=obs_values[t],
                     grid_coords=grid_coords,
                     grid_values=grid_values[t],
+                    logger=logger,
                 )
 
                 # A final check to ensure that the adjustment has taken place.
@@ -145,7 +147,7 @@ def main():
                         original_values=grid_values[t],
                         max_change_factor=config_xml["max_change_factor"],
                     )
-                    if np.array_equal(adjusted_values_checked, adjusted_values) == False:
+                    if np.array_equal(adjusted_values_checked, adjusted_values) is False:
                         logger.warning(
                             "Some of the adjusted values were above the set maximum adjustment factor."
                         )
@@ -183,7 +185,9 @@ def main():
                 outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
             )
             logger.info("Adjusted gridded rainfall stored to a netCDF.")
-            logger.info(f"Finished rain gauge adjustment. {len(obs_names)} gauges were provided.")
+            logger.info(
+                "Finished rain gauge adjustment. %s gauges were provided.", str(len(obs_names))
+            )
 
         elif requested_functionality == "downscaling":
             # 1. Downscale the precipitation
@@ -195,9 +199,11 @@ def main():
                     precip_orig=os.path.join(work_dir, "input", "gridded_rainfall.nc"),
                     clim_file=config_xml["clim_filepath"],
                     downscale_factor=config_xml["downscaling_factor"],
+                    logger=logger,
                 )
                 logger.info(
-                    f"Gridded preciptation successfully downscaled with a factor {config_xml["downscaling_factor"]}"
+                    "Gridded preciptation successfully downscaled with a factor %s",
+                    config_xml["downscaling_factor"],
                 )
 
                 # 2. Store the downscaled precipitation in a netCDF
@@ -223,10 +229,12 @@ def main():
 
         else:
             logger.error(
-                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+                "The requested functionality %s is not one of the supported options. Make sure to pick one from adjustment or downscaling.",
+                requested_functionality,
             )
             raise KeyError(
-                f"The requested functionality '{requested_functionality}' is not one of the supported options. Make sure to pick one from adjustment or downscaling."
+                "The requested functionality %s is not one of the supported options. Make sure to pick one from adjustment or downscaling.",
+                requested_functionality,
             )
 
     # pylint: disable=broad-exception-caught
