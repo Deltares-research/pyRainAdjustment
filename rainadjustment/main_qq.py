@@ -1,8 +1,10 @@
 import argparse
+import copy
 from datetime import datetime, timedelta
 import logging
 import os
 import time
+import glob
 
 import numpy as np
 import pandas as pd
@@ -10,116 +12,128 @@ import wradlib as wrl
 import xarray as xr
 from xarray import Dataset
 
-from rainadjustment.xml_config_parser import parse_run_xml
-import rainadjustment.main as main
+from rainadjustment.utils.xml_config_parser import parse_run_xml
+from utils.io import obtain_gauge_information
 
-def create_yearly_netcdf(ds_dir, ds_file):
-    dataset = xr.load_dataset(ds_dir + ds_file)
+def create_yearly_netcdf(filepath, config, check_na_dim = None, do_resample = False, min_year = 2012):
+    dataset = xr.load_dataset(filepath)
+    if 'tp' in dataset.data_vars:
+        dataset = dataset.rename({'tp': 'P'})
+    if check_na_dim != None:
+        dataset = dataset.dropna(dim=check_na_dim, how='all', subset='P')
     unique_years = np.unique(dataset.time.dt.year.values)
     print(unique_years)
+    unique_years = unique_years[unique_years>= min_year]
     ds_list = []
-    for year in unique_years:
+    for x, year in enumerate(unique_years):
         start, end = datetime(year, 1, 1), datetime(year, 12, 31)
         ds = dataset.sel(time=slice(start, end))
-        ds = ds.resample(time='1D').sum()
-        ds_filename = f'./intermediate/{ds_file.split(".nc")[0]}_y{year}.nc'
-        ds = ds.assign({'year': [year]})
+        if do_resample:
+            ds['P'] = ds.P.resample(step='3h').sum() ## Need to find uniform dimension to resample on frcst/obs
+        ds_filename = f'./{filepath.split(".nc")[0]}_y{year}.nc'
         ds_list.append(ds_filename)
         ds.to_netcdf(ds_filename)
     return ds_list
 
-
-def preprocess_to_yearly_files(dir, identifier):
+def preprocess_ECMWF_grib(grib_ds):
     '''
-    Function to make sure there are no duplicate calendardays in the dataset
-    by writing the file to multiple separate years.
-    Parameters
-    ----------
-    dir
-    identifier
-
+    Function to be applied in the xr.open_mfdataset call to preprocess gribs
     Returns
     -------
 
     '''
-    file_list = []
-    files_in_dir = os.listdir(dir)
-    ## Check if grids are larger than 1 year, if so, make separate yearly files
-    for file in files_in_dir:
-        if identifier in file:
-            yearly_files = create_yearly_netcdf(dir, file)
-            print('adding to gridlist')
-            file_list += yearly_files
-    return file_list
+    ds = grib_ds.diff(dim = 'step')
+    return ds
 
+
+def create_grid_obs_pairs(grid_dir: str,
+                          obs_dir: str,
+                          grid_identifier: str):
+    obs = obtain_gauge_information(obs_dir)
+    obs_locs = obs[0]
+    grid_list = []
+    grid_files = os.listdir(grid_dir)
+    for grid_file in grid_files:
+        if grid_identifier in grid_file:
+            grid_ds = xr.load_dataset(grid_dir + grid_file)
+            ## Remap years
+            print(grid_ds.time.dt.dayofyear.values)
+            ## Ugly selecting, takes both nearest indices, does not consider multi-index space
+            for obs_lat, obs_lon in obs_locs:
+                obs_cells = grid_ds.sel({'x': obs_lat, 'y': obs_lon}, method= 'nearest')
+                print(obs_cells)
+                grid_list.append(obs_cells)
+    return obs_locs, grid_list
+
+def deaccumulate(dataset, variable_name, deacc_dimension_name = 'time'):
+    dataset[variable_name] = dataset[variable_name].diff(dim = deacc_dimension_name)
+    return dataset
+
+def aggregate_to_timestep(dataset, timestep_hours, do_accumulate = True):
+    if do_accumulate:
+        dataset = dataset.resample(step = f'{timestep_hours}h').sum()
+    else:
+        dataset = dataset.resample(step = f'{timestep_hours}h').mean()
+    return dataset
+
+def attach_valid_time(dataset, t_name, dt_name):
+    data_valid_time = dataset[t_name] + dataset[dt_name]
+    dataset = dataset.assign_coords(valid_time=(data_valid_time))
+    return dataset
 
 def create_grid_climatology(obs_dir: str,
                             grid_dir: str,
-                            file_identifier: str):
-    obs = main.obtain_gauge_information(obs_dir)
+                            file_name: str,
+                             obs_identifier: str,
+                            config: dict = {}):
+    obs = obtain_gauge_information(obs_dir, obs_identifier)
     obs_locs = obs[0]
     station_x = xr.DataArray(obs_locs[:, 0], dims='stations')
     station_y = xr.DataArray(obs_locs[:, 1], dims='stations')
     station_name = xr.DataArray(obs[1], dims='stations')
-    grid_files = preprocess_to_yearly_files(grid_dir, file_identifier)
-    grid_list = []
+    grid_files = create_yearly_netcdf(grid_dir+file_name, config, check_na_dim=None, do_resample=False)
     # Spatial selection to trim storage
+    grid_list = []
     for grid_file in grid_files:
-        if file_identifier in grid_file:
-            grid_ds = xr.load_dataset(grid_file)
-            grid_list.append(grid_ds)
-    gridded_matches = xr.concat(grid_list, dim='stations')
 
-    # Temporal selection
-    min_year, max_year = datetime(1995, 1, 1), datetime(2025, 12, 31)
-    gridded_matches = gridded_matches.sel(time=slice(min_year, max_year))
-    new_times = pd.to_datetime(
-        {'year': 2024,
-         'month': gridded_matches['time'].dt.month.values,
-         'day': gridded_matches['time'].dt.day.values,
-         'hour': gridded_matches['time'].dt.hour.values}
-    )
+        grid_ds = xr.load_dataset(grid_file)
+        loc_list = []
+        for x in range(len(obs_locs)):
+            obs_cells = grid_ds.sel({'longitude': obs_locs[x][0], 'latitude': obs_locs[x][1]}, method='nearest')
+            obs_cells = obs_cells.assign_coords(stations = (obs[1][x]))
+            loc_list.append(obs_cells)
+        matched_cells = xr.concat(loc_list, dim = 'stations')
+        grid_list.append(matched_cells)
 
-    # Update the 'time' coordinate with the new times
-    gridded_matches = gridded_matches.assign_coords(time=('time', new_times), stations=obs[1])
+
+    gridded_matches = xr.concat(grid_list, dim='time')
     gridded_matches['station_x'] = station_x
     gridded_matches['station_y'] = station_y
     gridded_matches['station_name'] = station_name
-    gridded_matches.to_netcdf('./intermediate/1_Grid_climatology.nc')
-    res = moving_window_date_selection(gridded_matches, 15, 2024)
-    res.to_netcdf('./intermediate/2_Grid_climatology.nc')
-    return res, gridded_matches
+    gridded_matches = gridded_matches.assign_coords(stations=obs[1])
+    gridded_matches = gridded_matches.diff(dim = 'step')
+    gridded_matches['P'] = gridded_matches.P * 1000
+    gridded_matches['P'] = xr.where(gridded_matches.P > 0.02, gridded_matches.P, 0) ## Trim for 0.02mm threshold
+    gridded_matches.to_netcdf('./intermediate/Grid_climatology_2012_2024.nc')
+    return gridded_matches
 
 
 def create_obs_climatology(obs_dir: str,
                            file_identifier: str):
-    obs_files = preprocess_to_yearly_files(obs_dir, file_identifier)
-    station_names = main.obtain_gauge_information(obs_dir)[1]
-    obs_list = []
-    # Spatial selection to trim storage
-    for obs_file in obs_files:
-        if file_identifier in obs_file:
-            obs_ds = xr.load_dataset(obs_file)
-            obs_cells = obs_ds.assign({'filename': [obs_file]})
-            obs_list.append(obs_cells)
-    obs = xr.concat(obs_list, dim='stations')
-    obs = obs.assign({'stations': station_names})
-    # Temporal selection
-    min_year, max_year = datetime(1995, 1, 1), datetime(2025, 12, 31)
-    obs = obs.sel(time=slice(min_year, max_year))
+    obs = xr.load_dataset(obs_dir + file_identifier)
+    obs = obs.assign_coords(stations = obs.station_id)
+    print(obs)
+    obs = obs.dropna('stations', how = 'all', subset = 'P')
+    obs['stations'] = [x.decode("utf-8") for x in obs['stations'].values]
+    obs.to_netcdf('./intermediate/Obs_climatology_2012_2024.nc')
+    return obs
 
-    # Update the 'time' coordinate with the new times
-
-    res = moving_window_date_selection(obs, 15, 2024)
-    res.to_netcdf('./intermediate/Obs_climatology.nc')
-    return res
-
-
+## No longer used
 def moving_window_date_selection(dataset, window_size=15, init_year=2024):
     dataset['time'] = [pd.to_datetime(x) for x in dataset.time.values]
     ref_date = datetime(init_year, 1, 1)
     date_list = []
-    for day in range(100):
+    for day in range(366):
         ref_date_it = ref_date + timedelta(days=day)
         first_date = ref_date_it - timedelta(days=window_size)
         last_date = ref_date_it + timedelta(days=window_size)
@@ -142,9 +156,8 @@ def moving_window_date_selection(dataset, window_size=15, init_year=2024):
         if len(temp_ds.time.values) > 0:
             temp_ds = temp_ds.assign({'reference_time': [ref_date_it]})
             temp_ds = temp_ds.assign_coords(
-                delta_days=("time", (temp_ds.time.values - np.datetime64(ref_date_it)) / np.timedelta64(1, 'D')))
-            temp_ds = temp_ds.swap_dims({'time': "delta_days"})
-
+                delta_t=("time", np.linspace(-window_size*8, window_size*8, 2*8*window_size + 1)))
+            temp_ds = temp_ds.swap_dims({'time': "delta_t"})
             date_list.append(temp_ds)
     res = xr.concat(date_list, dim='reference_time')
     return res
@@ -163,10 +176,10 @@ def create_qmapping_factors(grid_values, obs_values):
     -------
 
     '''
-    grid_q = np.quantile(grid_values, q=np.linspace(0, 1, 101))
-    obs_q = np.quantile(obs_values, q=np.linspace(0, 1, 101))
+    grid_q = np.nanquantile(grid_values.flatten(), q=np.linspace(0, 1, 201))
+    obs_q = np.nanquantile(obs_values, q=np.linspace(0, 1, 201))
     correction_factors = obs_q / grid_q
-    return correction_factors, grid_q, obs_q
+    return np.array([correction_factors, grid_q, obs_q])
 
 
 def apply_qmap_correction(forecast: float, historical_data: np.ndarray[:], cor_factor: np.ndarray[:]):
@@ -178,18 +191,85 @@ def apply_qmap_correction(forecast: float, historical_data: np.ndarray[:], cor_f
     historical_data: array containing historic forecast distribution for the percentiles
     cor_factor: 1D-array containing correction factors for the percentiles
 
+
     Returns
     -------
 
     '''
-    sorted_hist = np.sort(historical_data.flatten())
-    hist_percentile = np.interp(forecast, sorted_hist, np.linspace(0, 1, len(sorted_hist)))
-    correction = np.interp(hist_percentile, np.linspace(0, 1, 101), cor_factor)
+    correction = np.interp(forecast, historical_data, cor_factor)
+    apply_corr = np.where(correction > 1000, 1000, correction)
+    # correction = np.interp(hist_percentile, np.linspace(0, 1, len(historical_data)), cor_factor)
     # corrected_value = forecast * correction
-    return correction
+    return np.array([correction, forecast, forecast*apply_corr])
 
 
-def Q_mapping_fitting(config_xml, window_size=15):
+def Q_mapping_gridref(init_month: int, input_file = '.nc'):
+
+    if input_file == '.grib':
+        next_month = np.max((1,(init_month + 1 )%13))
+        files = glob.glob(f'./input/ECMWF/downloaded*_{str(init_month).zfill(2)}.grib')
+        print(files)
+        grid_hist=xr.open_mfdataset(files, preprocess= preprocess_ECMWF_grib)
+        grid_hist.to_netcdf('./input/ECMWF/complete_grib2.nc')
+
+    grid_hist = xr.load_dataset('./input/ECMWF/complete_grib2.nc')
+
+
+    grid_hist['longitude'] = np.round(grid_hist.longitude.values, decimals=2)
+    grid_hist['latitude'] = np.round(grid_hist.latitude.values, decimals=2)
+    select_timestamps = grid_hist.time.dt.month.values == init_month
+    grid_hist = grid_hist.isel({'time': select_timestamps})
+    grid_hist = grid_hist.isel({'time': grid_hist.time.dt.day.values <27})
+    grid_hist = grid_hist.sel({'time' : slice('2013-01-01', '2021-01-01')}) ## Fixed lim for hist period
+    grid_hist['tp'] = grid_hist.tp.diff(dim = 'step')
+    print(grid_hist.valid_time.values)
+
+    ref_hist = xr.load_dataset('./input/ERA5_LAND_MDBA_2013_2020/data_0.nc')
+    ref_hist = ref_hist.rename({'valid_time': 'time'})
+    print(np.unique(grid_hist.valid_time.values.flatten()))
+    ref_hist = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
+    ref_hist['longitude'] = np.round(ref_hist.longitude.values, decimals=2)
+    ref_hist['latitude'] = np.round(ref_hist.latitude.values, decimals=2)
+
+    # Find common space in dimension, trim datasets
+    for dim in ['longitude', 'latitude']:
+        print(grid_hist[dim].values.min(), ref_hist[dim].values.min())
+        min = np.max([grid_hist[dim].values.min(), ref_hist[dim].values.min()])
+        max = np.min([grid_hist[dim].values.max(), ref_hist[dim].values.max()])
+        print(min, max)
+        subset = slice(min, max)
+        if dim == 'latitude':
+            subset = slice(max, min)
+        grid_hist = grid_hist.sel({dim: subset})
+        ref_hist = ref_hist.sel({dim: subset})
+
+    q_list = []
+    for step_it, leadtime in enumerate(grid_hist.step.values):
+        print(step_it)
+        grid_at_step = grid_hist.isel({'step': step_it})
+        ref_hist_step = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
+        factors = xr.apply_ufunc(
+            create_qmapping_factors,
+            grid_at_step.tp,
+            ref_hist_step.tp,
+            input_core_dims=[['time'], ['time']],
+            output_core_dims=[['variable', 'percentile']],
+            vectorize=True,
+            join = 'outer'
+        )
+        q_list.append(factors)
+
+    q_array = xr.concat(q_list, dim = 'step')
+    q_array = q_array.assign_coords(percentile = np.linspace(0,1,201))
+    q_array = q_array.to_dataset(dim = 'variable')
+    q_array = q_array.rename({0: 'correction_factors', 1: 'forecast_P_at_q', 2: 'obs_P_at_q'})
+
+    print(q_array.correction_factors.values)
+    q_array.to_netcdf('./intermediate/grid_quantile_correction.nc')
+    return q_array
+
+
+def Q_mapping_fitting(config_xml, init_month: int):
     '''
 
     Returns
@@ -199,41 +279,74 @@ def Q_mapping_fitting(config_xml, window_size=15):
 
 
     ## Take steps to compute correction factors
-    grid_hist = create_grid_climatology(config_xml['obs_dir'], config_xml['grid_dir'], config_xml['grid_identifier'])
-    obs_hist = create_obs_climatology(config_xml['obs_dir'], config_xml['obs_identifier'])
-    obs_values = obs_hist.drop_dims(['filename'])
-    obs_accumulated = moving_window_date_selection(obs_hist, 15)
-    grid_accumulated = moving_window_date_selection(grid_hist, 15)
+    # grid_hist = create_grid_climatology(config_xml['obs_dir'], config_xml['grid_dir'], config_xml['grid_identifier'], config_xml['obs_identifier'])
+    grid_hist = xr.load_dataset('./intermediate/Grid_climatology_2012_2024.nc')
+    # grid_hist['P'] = grid_hist.P * 1000
+    obs_hist = xr.load_dataset('./intermediate/Obs_climatology_2012_2024.nc')
+    min_non_zero = copy.deepcopy(obs_hist.P.values)
+    min_non_zero[min_non_zero == 0] = np.nan
+    min_non_zero = np.nanmin(min_non_zero, axis=0)
+    print(min_non_zero)
+    obs_hist = obs_hist.dropna('stations', how = 'all', subset = 'P')
+    grid_hist = grid_hist.sel({'stations': obs_hist.stations.values})
+    # obs_hist = create_obs_climatology(config_xml['obs_dir'], config_xml['obs_identifier'])
 
-    factors = xr.apply_ufunc(
-        create_qmapping_factors,
-        grid_accumulated,
-        obs_accumulated,
-        input_core_dims=[['reference_time', 'delta_days'], ['reference_time', 'delta_days']],
-        output_core_dims=[]
-    )
-    grid_hist.assign({'correction_factors': (['x', 'y', 'reference_time'], factors)})
-    grid_hist.to_netcdf('./intermediate/Grid_climatology.nc')
+    select_timestamps = grid_hist.time.dt.month.values == init_month
 
-    climatology = xr.load_dataset('./intermediate/Grid_climatology.nc')
+    grid_collection = grid_hist.isel({'time': select_timestamps})
+    q_list = []
+    for step_it, leadtime in enumerate(grid_collection.step.values):
+        print(step_it)
+        grid_at_step = grid_collection.isel({'step': step_it})
+        select_times = grid_at_step.valid_time.values.flatten()
+        select_times_trimmed = select_times[select_times<=obs_hist.time.values.max()] ## Trim end of timestamps if obs not available
+        if len(select_times) - len(select_times_trimmed) > 91:
+            raise ValueError('Timestamp Trimming Error: Too many observations not available')
+        obs_values = obs_hist.sel({'time': select_times_trimmed})
+        factors = xr.apply_ufunc(
+            create_qmapping_factors,
+            grid_at_step.P,
+            obs_values.P,
+            input_core_dims=[['time'], ['time']],
+            output_core_dims=[['variable', 'percentile']],
+            vectorize=True,
+            join = 'outer',
+        )
+        q_list.append(factors)
+
+    q_array = xr.concat(q_list, dim = 'step')
+    q_array = q_array.assign_coords(percentile = np.linspace(0,1,201))
+    q_array = q_array.to_dataset(dim = 'variable')
+    q_array = q_array.rename({0: 'correction_factors', 1: 'forecast_P_at_q', 2: 'obs_P_at_q'})
+
+    print(q_array)
+    q_array.to_netcdf('./intermediate/Quantile_climatology.nc')
+    return q_array
+
+def Q_mapping_correction_factors(grid_frcst: Dataset, grid_clim_path):
+    climatology = xr.load_dataset(grid_clim_path)
     factors = climatology.correction_factors
-    distr = climatology.P
+    distr = climatology.forecast_P_at_q
+
+    # grid_frcst = grid_frcst.sel({'stations': climatology.stations.values})
+
+    print(grid_frcst.dims)
+    print(climatology.dims)
 
     corrections = xr.apply_ufunc(
         apply_qmap_correction,
-        grid_frcst,
-        factors,
+        grid_frcst.tp,
         distr,
-        input_core_dims=[[], [], ['all_calendarday_data']],
-        output_core_dimensions=[],
+        factors,
+        input_core_dims=[['time'], ['percentile'],['percentile']],
+        output_core_dims = [['variable', 'time']],
         vectorize=True
     )
+    print(corrections)
 
+    return corrections
 
-def Q_mapping_correction_factors(grid_frcst: Dataset, window_size=15):
-    return None
-
-def main_qq():
+def main_qq(year, end_year, month):
     start = time.perf_counter()
     work_dir = os.getcwd()
 
@@ -278,8 +391,28 @@ def main_qq():
             logger.exception(exception, exc_info=True)
 
     # The actual work
-    Q_mapping_fitting(config_xml)
 
+    forecast = xr.load_dataset('./input/ECMWF/complete_grib2.nc')
+    forecast = forecast.sel({'time': forecast.time.values>np.datetime64(f'{str(year)}-01-01')})
+    forecast = forecast.sel({'time': forecast.time.values<np.datetime64(f'{str(end_year + 1)}-01-01')})
+    forecast = forecast.isel({'time': forecast.time.dt.month == int(month)}) ## Select March
+
+    forecast['longitude'] = np.round(forecast.longitude.values, decimals=2)
+    forecast['latitude'] = np.round(forecast.latitude.values, decimals=2)
+    forecast['tp'] = forecast.tp.diff(dim = 'step')
+    forecast.tp.values[forecast.tp.values<1e-06] = np.nan
+
+    print(forecast)
+
+    corrections = Q_mapping_correction_factors(forecast, './intermediate/grid_quantile_correction.nc')
+    print(corrections)
+    corrections = corrections.to_dataset(dim = 'variable')
+    print(corrections)
+    corrections = corrections.rename({0: 'correction', 1: 'P_forecast', 2: 'P_corrected'})
+    print(corrections)
+    corrections.to_netcdf(f'./output/gridded_corrections_{year}-{end_year}_{month}.nc')
+    return corrections
 
 if __name__ == '__main__':
-    main_qq()
+    Q_mapping_gridref(input_file = '.nc', init_month=3)
+    main_qq(2019, 2020, '03')
