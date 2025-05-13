@@ -17,7 +17,7 @@ import xarray as xr
 import wradlib as wrl
 
 
-def obtain_gauge_information(obs_dir, obs_identifier):
+def obtain_gauge_information(gauge_folder, logger):
     """
     Parameters
     ----------
@@ -25,6 +25,8 @@ def obtain_gauge_information(obs_dir, obs_identifier):
         The folder containing all netCDFs with the rain gauge observations.
         The rain gauge observations are expected to contain "_Gauges.nc"
         in their name.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
     Returns
     ------
@@ -42,11 +44,11 @@ def obtain_gauge_information(obs_dir, obs_identifier):
     obs_values = None
 
     # Open the files
-    gauges_files = os.listdir(obs_dir)
+    gauges_files = os.listdir(gauge_folder)
     for gauge_file in gauges_files:
         obs_values_ = []
-        if obs_identifier in gauge_file:
-            ds = xr.open_dataset(os.path.join(obs_dir, gauge_file))
+        if gauge_file.endswith("_Gauges.nc"):
+            ds = xr.open_dataset(os.path.join(gauge_folder, gauge_file))
 
             for t in range(ds.P.shape[0]):
                 obs_values_.append(ds.P[t].values)
@@ -62,12 +64,17 @@ def obtain_gauge_information(obs_dir, obs_identifier):
                 if len(precip_var_name) == 1:
                     precip_gauges = ds[precip_var_name]
                 else:
+                    logger.error(
+                        "More than one variable provided in the gauge dataset. Variables found are: %s",
+                        precip_var_name,
+                    )
                     raise KeyError(
-                        f"More than one variable provided in the gauge dataset. Variables found are: {precip_var_name}"
+                        "More than one variable provided in the gauge dataset. Variables found are: %s",
+                        precip_var_name,
                     )
 
             # Check the dimensions of the DataArray and if needed, adjust them
-            precip_gauges = check_dimensions(precip=precip_gauges)
+            precip_gauges = check_dimensions(precip=precip_gauges, logger=logger)
 
             for station_index in range(precip_gauges.shape[0]):
                 # Get the station information per station
@@ -87,13 +94,15 @@ def obtain_gauge_information(obs_dir, obs_identifier):
     return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
 
 
-def obtain_gridded_rainfall_information(grid_file):
+def obtain_gridded_rainfall_information(grid_file, logger):
     """
     Parameters
     ----------
     grid_file: str
         The netCDF file containing the gridded rainfall information for
         the last hour.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
     Returns
     ------
@@ -118,12 +127,17 @@ def obtain_gridded_rainfall_information(grid_file):
         if len(precip_var_name) == 1:
             precip_gridded = ds_gridded[precip_var_name]
         else:
+            logger.error(
+                "More than one variable provided in the gridded precip dataset. Variables found are: %s",
+                precip_var_name,
+            )
             raise KeyError(
-                f"More than one variable provided in the gridded precip dataset. Variables found are: {precip_var_name}"
+                "More than one variable provided in the gridded precip dataset. Variables found are: %s",
+                precip_var_name,
             )
 
     # Check the dimensions of the DataArray and if needed, adjust them
-    precip_gridded = check_dimensions(precip=precip_gridded)
+    precip_gridded = check_dimensions(precip=precip_gridded, logger=logger)
 
     # Get the grid information
     grid_lats = precip_gridded.lat.values
@@ -148,18 +162,20 @@ def obtain_gridded_rainfall_information(grid_file):
     return grid_coords, grid_values, grid_shape
 
 
-def store_as_netcdf(adjustment_factor, dataset_example, outfile):
+def store_as_netcdf(gridded_array, dataset_example, variable_name, outfile):
     """
     Saves the output adjustment factors to a new NetCDF file.
 
     Parameters
     ----------
-        adjustment_factor: ndarray
+        gridded_array: ndarray
             3D array (time, y ,x) containing the adjustment factors on the
             original gridded rainfall product grid.
         dataset_example: xr DataSet
             The original gridded rainfall xr DataSet which will
             form the blue print for the output dataset.
+        variable_name: str
+            The name of the variable that should be saved.
         outfile: str
             The output file location.
 
@@ -170,9 +186,9 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     # Make a dataset out of the array
     output_dataset = xr.Dataset(
         {
-            "adjustment_factor": (
+            f"{variable_name}": (
                 ("time", "y", "x"),
-                adjustment_factor,
+                gridded_array,
             )
         },
         coords={
@@ -216,10 +232,10 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     )
 
     # Add attributes to data variables
-    output_dataset["adjustment_factor"].attrs.update(
+    output_dataset[f"{variable_name}"].attrs.update(
         {
-            "long_name": "Adjustment Factor",
-            "standard_name": "adjustment_factor",
+            "long_name": f"{variable_name}",
+            "standard_name": f"{variable_name}",
             "units": "-",
         }
     )
@@ -231,7 +247,7 @@ def store_as_netcdf(adjustment_factor, dataset_example, outfile):
     return
 
 
-def check_dimensions(precip):
+def check_dimensions(precip, logger):
     """
     As we only calculate in WGS84 latitude and longitude x- and y-values,
     we first check if these dimensions exist.
@@ -241,6 +257,8 @@ def check_dimensions(precip):
     precip: xr.DataArray
         DataArray containing the rainfall information (scalar or gridded)
         of which the dimensions need to be checked.
+    logger: logging instance
+        Logger for log messages, passed on from the main.py script.
 
     Returns
     ------
@@ -256,6 +274,9 @@ def check_dimensions(precip):
         elif "x" in precip.coords:
             precip = precip.rename({"x": "lon"})
         else:
+            logger.error(
+                "The provided DataArray does not contain the dimensions x, lon or longitude"
+            )
             raise KeyError(
                 "The provided DataArray does not contain the dimensions x, lon or longitude"
             )
@@ -265,6 +286,9 @@ def check_dimensions(precip):
         elif "y" in precip.coords:
             precip = precip.rename({"y": "lat"})
         else:
+            logger.error(
+                "The provided gridded DataArray does not contain the dimensions y, lat or latitude"
+            )
             raise KeyError(
                 "The provided gridded DataArray does not contain the dimensions y, lat or latitude"
             )

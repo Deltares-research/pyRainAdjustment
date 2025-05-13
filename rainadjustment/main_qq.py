@@ -208,7 +208,6 @@ def Q_mapping_gridref(init_month: int, input_file = '.nc'):
     if input_file == '.grib':
         next_month = np.max((1,(init_month + 1 )%13))
         files = glob.glob(f'./input/ECMWF/downloaded*_{str(init_month).zfill(2)}.grib')
-        files += glob.glob(f'./input/ECMWF/downloaded*_{str(next_month).zfill(2)}.grib')
         print(files)
         grid_hist=xr.open_mfdataset(files, preprocess= preprocess_ECMWF_grib)
         grid_hist.to_netcdf('./input/ECMWF/complete_grib2.nc')
@@ -220,14 +219,14 @@ def Q_mapping_gridref(init_month: int, input_file = '.nc'):
     grid_hist['latitude'] = np.round(grid_hist.latitude.values, decimals=2)
     select_timestamps = grid_hist.time.dt.month.values == init_month
     grid_hist = grid_hist.isel({'time': select_timestamps})
+    grid_hist = grid_hist.isel({'time': grid_hist.time.dt.day.values <27})
     grid_hist = grid_hist.sel({'time' : slice('2013-01-01', '2021-01-01')}) ## Fixed lim for hist period
     grid_hist['tp'] = grid_hist.tp.diff(dim = 'step')
     print(grid_hist.valid_time.values)
 
     ref_hist = xr.load_dataset('./input/ERA5_LAND_MDBA_2013_2020/data_0.nc')
     ref_hist = ref_hist.rename({'valid_time': 'time'})
-    print(ref_hist.time.values)
-    ref_hist = ref_hist.sel({'time': grid_hist.valid_time.values})
+    ref_hist = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
     ref_hist['longitude'] = np.round(ref_hist.longitude.values, decimals=2)
     ref_hist['latitude'] = np.round(ref_hist.latitude.values, decimals=2)
 
