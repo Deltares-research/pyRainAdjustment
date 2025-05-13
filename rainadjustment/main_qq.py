@@ -226,6 +226,7 @@ def Q_mapping_gridref(init_month: int, input_file = '.nc'):
 
     ref_hist = xr.load_dataset('./input/ERA5_LAND_MDBA_2013_2020/data_0.nc')
     ref_hist = ref_hist.rename({'valid_time': 'time'})
+    print(np.unique(grid_hist.valid_time.values.flatten()))
     ref_hist = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
     ref_hist['longitude'] = np.round(ref_hist.longitude.values, decimals=2)
     ref_hist['latitude'] = np.round(ref_hist.latitude.values, decimals=2)
@@ -246,7 +247,7 @@ def Q_mapping_gridref(init_month: int, input_file = '.nc'):
     for step_it, leadtime in enumerate(grid_hist.step.values):
         print(step_it)
         grid_at_step = grid_hist.isel({'step': step_it})
-        ref_hist_step = ref_hist.sel({'time': grid_hist.valid_time.values})
+        ref_hist_step = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
         factors = xr.apply_ufunc(
             create_qmapping_factors,
             grid_at_step.tp,
@@ -413,5 +414,5 @@ def main_qq(year, end_year, month):
     return corrections
 
 if __name__ == '__main__':
-    Q_mapping_gridref(input_file = '.grib', init_month=3)
+    Q_mapping_gridref(input_file = '.nc', init_month=3)
     main_qq(2019, 2020, '03')
