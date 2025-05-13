@@ -58,9 +58,7 @@ def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_value
         )
     else:
         adjuster = __obtain_adjustment_method(
-            config_xml=config_xml,
-            obs_coords=obs_coords,
-            grid_coords=grid_coords,
+            config_xml=config_xml, obs_coords=obs_coords, grid_coords=grid_coords, logger=logger
         )
         return adjuster(obs_values, grid_values)
 
