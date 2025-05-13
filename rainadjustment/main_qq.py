@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 import time
+import glob
 
 import numpy as np
 import pandas as pd
@@ -34,6 +35,15 @@ def create_yearly_netcdf(filepath, config, check_na_dim = None, do_resample = Fa
         ds.to_netcdf(ds_filename)
     return ds_list
 
+def preprocess_ECMWF_grib(grib_ds):
+    '''
+    Function to be applied in the xr.open_mfdataset call to preprocess gribs
+    Returns
+    -------
+
+    '''
+    ds = grib_ds.diff(dim = 'step')
+    return ds
 
 
 def create_grid_obs_pairs(grid_dir: str,
@@ -181,14 +191,82 @@ def apply_qmap_correction(forecast: float, historical_data: np.ndarray[:], cor_f
     historical_data: array containing historic forecast distribution for the percentiles
     cor_factor: 1D-array containing correction factors for the percentiles
 
+
     Returns
     -------
 
     '''
     correction = np.interp(forecast, historical_data, cor_factor)
+    apply_corr = np.where(correction > 1000, 1000, correction)
     # correction = np.interp(hist_percentile, np.linspace(0, 1, len(historical_data)), cor_factor)
     # corrected_value = forecast * correction
-    return np.array([correction, forecast, forecast*correction])
+    return np.array([correction, forecast, forecast*apply_corr])
+
+
+def Q_mapping_gridref(init_month: int, input_file = '.nc'):
+
+    if input_file == '.grib':
+        next_month = np.max((1,(init_month + 1 )%13))
+        files = glob.glob(f'./input/ECMWF/downloaded*_{str(init_month).zfill(2)}.grib')
+        files += glob.glob(f'./input/ECMWF/downloaded*_{str(next_month).zfill(2)}.grib')
+        print(files)
+        grid_hist=xr.open_mfdataset(files, preprocess= preprocess_ECMWF_grib)
+        grid_hist.to_netcdf('./input/ECMWF/complete_grib2.nc')
+
+    grid_hist = xr.load_dataset('./input/ECMWF/complete_grib2.nc')
+
+
+    grid_hist['longitude'] = np.round(grid_hist.longitude.values, decimals=2)
+    grid_hist['latitude'] = np.round(grid_hist.latitude.values, decimals=2)
+    select_timestamps = grid_hist.time.dt.month.values == init_month
+    grid_hist = grid_hist.isel({'time': select_timestamps})
+    grid_hist = grid_hist.sel({'time' : slice('2013-01-01', '2021-01-01')}) ## Fixed lim for hist period
+    grid_hist['tp'] = grid_hist.tp.diff(dim = 'step')
+    print(grid_hist.valid_time.values)
+
+    ref_hist = xr.load_dataset('./input/ERA5_LAND_MDBA_2013_2020/data_0.nc')
+    ref_hist = ref_hist.rename({'valid_time': 'time'})
+    print(ref_hist.time.values)
+    ref_hist = ref_hist.sel({'time': grid_hist.valid_time.values})
+    ref_hist['longitude'] = np.round(ref_hist.longitude.values, decimals=2)
+    ref_hist['latitude'] = np.round(ref_hist.latitude.values, decimals=2)
+
+    # Find common space in dimension, trim datasets
+    for dim in ['longitude', 'latitude']:
+        print(grid_hist[dim].values.min(), ref_hist[dim].values.min())
+        min = np.max([grid_hist[dim].values.min(), ref_hist[dim].values.min()])
+        max = np.min([grid_hist[dim].values.max(), ref_hist[dim].values.max()])
+        print(min, max)
+        subset = slice(min, max)
+        if dim == 'latitude':
+            subset = slice(max, min)
+        grid_hist = grid_hist.sel({dim: subset})
+        ref_hist = ref_hist.sel({dim: subset})
+
+    q_list = []
+    for step_it, leadtime in enumerate(grid_hist.step.values):
+        print(step_it)
+        grid_at_step = grid_hist.isel({'step': step_it})
+        ref_hist_step = ref_hist.sel({'time': grid_hist.valid_time.values})
+        factors = xr.apply_ufunc(
+            create_qmapping_factors,
+            grid_at_step.tp,
+            ref_hist_step.tp,
+            input_core_dims=[['time'], ['time']],
+            output_core_dims=[['variable', 'percentile']],
+            vectorize=True,
+            join = 'outer'
+        )
+        q_list.append(factors)
+
+    q_array = xr.concat(q_list, dim = 'step')
+    q_array = q_array.assign_coords(percentile = np.linspace(0,1,201))
+    q_array = q_array.to_dataset(dim = 'variable')
+    q_array = q_array.rename({0: 'correction_factors', 1: 'forecast_P_at_q', 2: 'obs_P_at_q'})
+
+    print(q_array.correction_factors.values)
+    q_array.to_netcdf('./intermediate/grid_quantile_correction.nc')
+    return q_array
 
 
 def Q_mapping_fitting(config_xml, init_month: int):
@@ -245,16 +323,19 @@ def Q_mapping_fitting(config_xml, init_month: int):
     q_array.to_netcdf('./intermediate/Quantile_climatology.nc')
     return q_array
 
-def Q_mapping_correction_factors(grid_frcst: Dataset, grid_clim_file):
-    climatology = xr.load_dataset(grid_clim_file)
+def Q_mapping_correction_factors(grid_frcst: Dataset, grid_clim_path):
+    climatology = xr.load_dataset(grid_clim_path)
     factors = climatology.correction_factors
     distr = climatology.forecast_P_at_q
 
-    grid_frcst = grid_frcst.sel({'stations': climatology.stations.values})
+    # grid_frcst = grid_frcst.sel({'stations': climatology.stations.values})
+
+    print(grid_frcst.dims)
+    print(climatology.dims)
 
     corrections = xr.apply_ufunc(
         apply_qmap_correction,
-        grid_frcst.P,
+        grid_frcst.tp,
         distr,
         factors,
         input_core_dims=[['time'], ['percentile'],['percentile']],
@@ -265,7 +346,7 @@ def Q_mapping_correction_factors(grid_frcst: Dataset, grid_clim_file):
 
     return corrections
 
-def main_qq():
+def main_qq(year, end_year, month):
     start = time.perf_counter()
     work_dir = os.getcwd()
 
@@ -310,18 +391,28 @@ def main_qq():
             logger.exception(exception, exc_info=True)
 
     # The actual work
-    # Q_mapping_fitting(config_xml, init_month = 3)
-    forecast = xr.load_dataset('./intermediate/Grid_climatology_2012_2024.nc')
-    forecast = forecast.sel({'time': forecast.time.values>np.datetime64('2024-01-01')})
-    forecast = forecast.isel({'time': forecast.time.dt.month == 3})
-    corrections = Q_mapping_correction_factors(forecast, './intermediate/Quantile_climatology.nc')
+
+    forecast = xr.load_dataset('./input/ECMWF/complete_grib2.nc')
+    forecast = forecast.sel({'time': forecast.time.values>np.datetime64(f'{str(year)}-01-01')})
+    forecast = forecast.sel({'time': forecast.time.values<np.datetime64(f'{str(end_year + 1)}-01-01')})
+    forecast = forecast.isel({'time': forecast.time.dt.month == int(month)}) ## Select March
+
+    forecast['longitude'] = np.round(forecast.longitude.values, decimals=2)
+    forecast['latitude'] = np.round(forecast.latitude.values, decimals=2)
+    forecast['tp'] = forecast.tp.diff(dim = 'step')
+    forecast.tp.values[forecast.tp.values<1e-06] = np.nan
+
+    print(forecast)
+
+    corrections = Q_mapping_correction_factors(forecast, './intermediate/grid_quantile_correction.nc')
     print(corrections)
     corrections = corrections.to_dataset(dim = 'variable')
     print(corrections)
     corrections = corrections.rename({0: 'correction', 1: 'P_forecast', 2: 'P_corrected'})
     print(corrections)
-    corrections.to_netcdf('./output/corrections_2024_03.nc')
+    corrections.to_netcdf(f'./output/gridded_corrections_{year}-{end_year}_{month}.nc')
     return corrections
 
 if __name__ == '__main__':
-    main_qq()
+    Q_mapping_gridref(input_file = '.grib', init_month=3)
+    main_qq(2019, 2020, '03')
