@@ -2,6 +2,9 @@
 """
 Functions to downscale gridded precipitation data using monthly climatology of rainfall.
 This functionality makes use of the HydroMT python package (Eilander et al., 2023, JOSS).
+
+Available functions:
+- downscale_gridded_precip
 """
 
 import pandas as pd
