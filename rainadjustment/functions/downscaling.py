@@ -6,7 +6,6 @@ This functionality makes use of the HydroMT python package (Eilander et al., 202
 
 import pandas as pd
 import xarray as xr
-import rioxarray
 from rasterio.enums import Resampling
 
 from utils.io import check_dimensions
@@ -56,10 +55,13 @@ def downscale_gridded_precip(precip_orig, clim_file, downscale_factor, logger):
         try:
             ds_clim = ds_clim.rename({"spatial_ref": "crs"})
             ds_clim = ds_clim.rio.write_crs(ds_clim.crs.attrs["crs_wkt"])
-        except ValueError:
-            raise ValueError(
+        except ValueError as exc:
+            logger.error(
                 "Coordinate reference system of climatology file not found. Make sure that the CRS is called crs or spatial_ref in the netCDF file."
             )
+            raise ValueError(
+                "Coordinate reference system of climatology file not found. Make sure that the CRS is called crs or spatial_ref in the netCDF file."
+            ) from exc
 
     # First, clip the data
     min_x = precip_out.x.min().item()
