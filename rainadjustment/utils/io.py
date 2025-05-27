@@ -10,14 +10,18 @@ Available functions:
 """
 
 from datetime import datetime
+import logging
 import os
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 import wradlib as wrl
 
 
-def obtain_gauge_information(gauge_folder, logger):
+def obtain_gauge_information(
+    gauge_folder: str, logger: logging.Logger
+) -> tuple[npt.NDArray[np.float64], list[str], npt.NDArray[np.float64]]:
     """
     Parameters
     ----------
@@ -30,12 +34,12 @@ def obtain_gauge_information(gauge_folder, logger):
 
     Returns
     ------
-    obs_coords: list(float)
+    obs_coords: ndarray(float)
         List of float containing the latitude and longitude values of the
         gauges as (lat, lon).
     obs_names: list(str)
         List containing the station names.
-    obs_values: list(float)
+    obs_values: ndarray(float)
         List containing the station observation values per station.
     """
     # Create the output list
@@ -91,10 +95,12 @@ def obtain_gauge_information(gauge_folder, logger):
             else:
                 obs_values = obs_values_.copy()
 
-    return np.array(obs_coords), np.array(obs_names), np.array(obs_values)
+    return np.array(obs_coords), obs_names, np.array(obs_values)
 
 
-def obtain_gridded_rainfall_information(grid_file, logger):
+def obtain_gridded_rainfall_information(
+    grid_file: str, logger: logging.Logger
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], tuple[int, int]]:
     """
     Parameters
     ----------
@@ -112,7 +118,7 @@ def obtain_gridded_rainfall_information(grid_file, logger):
     grid_values: ndarray(float)
         List containing the rainfall values per grid point as a flattened
         array.
-    grid_shape: (int, int)
+    grid_shape: tuple(int, int)
         The shape of the gridded rainfall product before flattening
         (lons, lats)
     """
@@ -162,7 +168,12 @@ def obtain_gridded_rainfall_information(grid_file, logger):
     return grid_coords, grid_values, grid_shape
 
 
-def store_as_netcdf(gridded_array, dataset_example, variable_name, outfile):
+def store_as_netcdf(
+    gridded_array: npt.NDArray[np.float64],
+    dataset_example: xr.Dataset,
+    variable_name: str,
+    outfile: str,
+) -> None:
     """
     Saves the output adjustment factors to a new NetCDF file.
 
@@ -247,7 +258,7 @@ def store_as_netcdf(gridded_array, dataset_example, variable_name, outfile):
     return
 
 
-def check_dimensions(precip, logger):
+def check_dimensions(precip: xr.DataArray, logger: logging.Logger) -> xr.DataArray:
     """
     As we only calculate in WGS84 latitude and longitude x- and y-values,
     we first check if these dimensions exist.

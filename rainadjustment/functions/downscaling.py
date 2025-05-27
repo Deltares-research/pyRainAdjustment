@@ -7,6 +7,8 @@ Available functions:
 - downscale_gridded_precip
 """
 
+import logging
+
 import pandas as pd
 import xarray as xr
 from rasterio.enums import Resampling
@@ -14,7 +16,9 @@ from rasterio.enums import Resampling
 from utils.io import check_dimensions
 
 
-def downscale_gridded_precip(precip_orig, clim_file, downscale_factor, logger):
+def downscale_gridded_precip(
+    precip_orig: str, clim_file: str, downscale_factor: int, logger: logging.Logger
+) -> xr.Dataset:
     """
     Parameters
     ----------

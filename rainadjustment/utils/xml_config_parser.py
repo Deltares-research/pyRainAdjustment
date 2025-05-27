@@ -7,12 +7,13 @@ Available functions:
 - parse_run_xml
 """
 
+from typing import Any
 import xml
 from xml import dom
 from xml.dom import minidom
 
 
-def parse_run_xml(xml_file):
+def parse_run_xml(xml_file: str) -> dict[str, Any]:
     """Function to read the xml settings from Delft-FEWS, which are used as
     initial settings for radar rainfall nowcasting with pysteps.
 
@@ -22,7 +23,7 @@ def parse_run_xml(xml_file):
         The location and filename of the xml-file which contains the nowcast
         settings for pysteps
 
-    Returns (if present in the XML file)
+    Returns at dictionary containing (if present in the XML file)
     ------------------------------------
     work_dir: string
         The working directory for the adjustment.
