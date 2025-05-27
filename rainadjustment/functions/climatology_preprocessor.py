@@ -8,16 +8,21 @@ Available functions:
 - __post_process_clim_files
 """
 
+import logging
 import os
+from typing import Any
 import zipfile
 
 import numpy as np
+import numpy.typing as npt
 import requests
 import rioxarray
 import xarray as xr
 
 
-def get_climatology_dataset(config_xml, work_dir, logger):
+def get_climatology_dataset(
+    config_xml: dict[str, Any], work_dir: str, logger: logging.Logger
+) -> str:
     """
     Function to either find the filepath or download a climatology dataset.
     Parameters
@@ -79,7 +84,7 @@ def get_climatology_dataset(config_xml, work_dir, logger):
     return __post_process_clim_files(os.path.join(work_dir, "clim"), logger=logger)
 
 
-def __post_process_clim_files(clim_dir, logger):
+def __post_process_clim_files(clim_dir: str, logger: logging.Logger) -> str:
     """
     Function to convert individual monthly precipitation climatology files
     from geoTIFF into one netCDF file.

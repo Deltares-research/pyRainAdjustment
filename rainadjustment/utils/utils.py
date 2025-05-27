@@ -9,11 +9,15 @@ Available functons:
 - __idvalid
 """
 
+import logging
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
 import wradlib as wrl
 
 
-def get_interpolation_method(config_xml):
+def get_interpolation_method(config_xml: dict[str, Any], logger: logging.Logger):
     """
     Parameters
     ----------
@@ -33,22 +37,32 @@ def get_interpolation_method(config_xml):
 
     try:
         return interpolation_methods[config_xml["interpolation_method"]]
-    except KeyError:
+    except KeyError as exc:
+        logger.error(
+            "Unknown interpolation method %s. The available methods are: %s",
+            config_xml["interpolation_method"],
+            str(list(interpolation_methods.keys())),
+        )
         raise ValueError(
             "Unknown interpolation method {}\n".format(config_xml["interpolation_method"])
             + "The available methods are:"
             + str(list(interpolation_methods.keys()))
-        )
+        ) from exc
 
 
-def interpolate(interpolation_method, obs_coords, grid_coords, values_to_interpolate):
+def interpolate(
+    interpolation_method,
+    obs_coords: npt.NDArray[np.float64],
+    grid_coords: npt.NDArray[np.float64],
+    values_to_interpolate: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
     """
     Parameters
     ----------
     interpolation_method: wrl.ipol method
         interpolation_method: callable interpolation method function from wrl.ipol.
         The method can be obtained from the get_interpolation_method function.
-    obs_coords: list(float)
+    obs_coords: ndarray(float)
         List of floats containing the latitude and longitude values of the
         gauges as (lat, lon).
     grid_coords: ndarray(float)
@@ -72,13 +86,19 @@ def interpolate(interpolation_method, obs_coords, grid_coords, values_to_interpo
     return interpolator(values_to_interpolate)
 
 
-def get_rawatobs(config_xml, obs_coords, obs_values, grid_coords, grid_values):
+def get_rawatobs(
+    config_xml: dict[str, Any],
+    obs_coords: npt.NDArray[np.float64],
+    obs_values: npt.NDArray[np.float64],
+    grid_coords: npt.NDArray[np.float64],
+    grid_values: npt.NDArray[np.float64],
+) -> tuple[None | npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """
     Parameters
     ----------
     config_xml: dict
         Dictionary containing the adjustment settings.
-    obs_coords: list(float)
+    obs_coords: ndarray(float)
         List of floats containing the latitude and longitude values of the
         gauges as (lat, lon).
     obs_values: ndarray(float)
@@ -90,7 +110,6 @@ def get_rawatobs(config_xml, obs_coords, obs_values, grid_coords, grid_values):
     grid_values: ndarray(float)
         List of floats containing the gridded rainfall value per (lat, lon)
         coordinate in the grid.
-
 
     Returns
     ------
@@ -123,9 +142,14 @@ def get_rawatobs(config_xml, obs_coords, obs_values, grid_coords, grid_values):
     return rawatobs, ix
 
 
-def __idvalid(data, isinvalid=None, minval=None, maxval=None):
-    """Identifies valid entries in an array and returns the corresponding
-    indices
+def __idvalid(
+    data: npt.NDArray[np.float64],
+    isinvalid: list[float] | None = None,
+    minval: float | None = None,
+    maxval: float | None = None,
+) -> npt.NDArray[np.int16]:
+    """Function from wradlib: identifies valid entries in an array and returns
+    the corresponding indices.
 
     Invalid values are NaN and Inf. Other invalid values can be passed using
     the isinvalid keyword argument.
@@ -133,9 +157,17 @@ def __idvalid(data, isinvalid=None, minval=None, maxval=None):
     Parameters
     ----------
     data : :class:`numpy:numpy.ndarray`
-    isinvalid : list
-        list of what is considered an invalid value
+    isinvalid : list | None
+        List of what is considered an invalid value
+    minval: float | None
+        Minimum value to be used.
+    maxval: float | None
+        Maximum value to be used.
 
+    Returns
+    ------
+    valid entries: ndarray(int)
+        Indices of the valid entries.
     """
     if isinvalid is None:
         isinvalid = [-99.0, 99, -9999.0, -9999]

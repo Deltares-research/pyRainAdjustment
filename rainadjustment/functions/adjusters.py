@@ -10,14 +10,25 @@ Available functions:
 - __kriging_adjustment
 """
 
+import logging
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
 import skgstat as skg
 import wradlib as wrl
 
 from utils.utils import get_rawatobs, get_interpolation_method
 
 
-def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values, logger):
+def apply_adjustment(
+    config_xml: dict[str, Any],
+    obs_coords: npt.NDArray[np.float64],
+    obs_values: npt.NDArray[np.float64],
+    grid_coords: npt.NDArray[np.float64],
+    grid_values: npt.NDArray[np.float64],
+    logger: logging.Logger,
+) -> npt.NDArray[np.float64]:
     """
     Main function to apply the adjustment on the gridded rainfall product.
 
@@ -64,10 +75,10 @@ def apply_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_value
 
 
 def check_adjustment_factor(
-    adjusted_values,
-    original_values,
-    max_change_factor,
-):
+    adjusted_values: npt.NDArray[np.float64],
+    original_values: npt.NDArray[np.float64],
+    max_change_factor: float,
+) -> npt.NDArray[np.float64]:
     """
     Parameters
     ----------
@@ -113,13 +124,18 @@ def check_adjustment_factor(
     return checked_adjusted_values
 
 
-def __obtain_adjustment_method(config_xml, obs_coords, grid_coords, logger):
+def __obtain_adjustment_method(
+    config_xml: dict[str, Any],
+    obs_coords: npt.NDArray[np.float64],
+    grid_coords: npt.NDArray[np.float64],
+    logger: logging.Logger,
+):
     """
     Parameters
     ----------
     config_xml: dict
         Dictionary containing the adjustment settings.
-    obs_coords: list(float)
+    obs_coords: ndarray(float)
         List of float containing the latitude and longitude values of the
         gauges as (lat, lon).
     grid_coords: ndarray(float)
@@ -137,7 +153,7 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords, logger):
         are present has already taken place by wradlib.
     """
     adjustment_method = config_xml["adjustment_method"]
-    interpolation_method = get_interpolation_method(config_xml)
+    interpolation_method = get_interpolation_method(config_xml, logger=logger)
 
     if adjustment_method == "MFB":
         return wrl.adjust.AdjustMFB(
@@ -190,13 +206,20 @@ def __obtain_adjustment_method(config_xml, obs_coords, grid_coords, logger):
         )
 
 
-def __kriging_adjustment(config_xml, obs_coords, obs_values, grid_coords, grid_values, logger):
+def __kriging_adjustment(
+    config_xml: dict[str, Any],
+    obs_coords: npt.NDArray[np.float64],
+    obs_values: npt.NDArray[np.float64],
+    grid_coords: npt.NDArray[np.float64],
+    grid_values: npt.NDArray[np.float64],
+    logger: logging.Logger,
+) -> npt.NDArray[np.float64]:
     """
     Parameters
     ----------
     config_xml: dict
         Dictionary containing the adjustment settings.
-    obs_coords: list(float)
+    obs_coords: ndarray(float)
         List of floats containing the latitude and longitude values of the
         gauges as (lat, lon).
     obs_values: ndarray(float)
