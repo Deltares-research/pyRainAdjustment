@@ -13,6 +13,7 @@ import numpy as np
 import xarray as xr
 
 from functions.adjusters import apply_adjustment, check_adjustment_factor
+from functions.climatology_preprocessor import get_climatology_dataset
 from functions.downscaling import downscale_gridded_precip
 from utils.io import obtain_gauge_information, obtain_gridded_rainfall_information, store_as_netcdf
 from utils.xml_config_parser import parse_run_xml
@@ -105,7 +106,9 @@ def main():
             # Check if obs_values and grid_values have the same number of timesteps
             if obs_values.shape[0] != grid_values.shape[0]:
                 logger.error(
-                    f"No. of supplied timesteps in observations ({str(obs_values.shape[0])}) is different from number of timesteps in gridded precip dataset ({grid_values.shape[0]})"
+                    "No. of supplied timesteps in observations (%s) is different from number of timesteps in gridded precip dataset (%s)",
+                    str(obs_values.shape[0]),
+                    str(grid_values.shape[0]),
                 )
                 raise AssertionError(
                     "No. of supplied timesteps in observations is different from those in the gridded precip dataset"
@@ -129,17 +132,23 @@ def main():
                 if np.array_equal(adjusted_values, grid_values[t]):
                     if np.isfinite(grid_values).any():
                         logger.info(
-                            f"Adjustment for time step {str(t + 1)} out of {str(grid_values.shape[0])} has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step."
+                            "Adjustment for time step %s out of %s has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step.",
+                            str(t + 1),
+                            str(grid_values.shape[0]),
                         )
                         adjusted_values_checked = adjusted_values.copy()
                     else:
                         logger.warning(
-                            f"Adjustment for time step {str(t + 1)} out of {str(grid_values.shape[0])} has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step."
+                            "Adjustment for time step %s out of %s has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step.",
+                            str(t + 1),
+                            str(grid_values.shape[0]),
                         )
                         adjusted_values_checked = adjusted_values * np.nan
                 else:
                     logger.info(
-                        f"Adjustment for time step {str(t + 1)} out of {str(grid_values.shape[0])} has taken place successfully."
+                        "Adjustment for time step %s out of %s has taken place successfully.",
+                        str(t + 1),
+                        str(grid_values.shape[0]),
                     )
                     # Also ensure that the correction values have not been too high.
                     adjusted_values_checked = check_adjustment_factor(
@@ -190,14 +199,16 @@ def main():
             )
 
         elif requested_functionality == "downscaling":
-            # 1. Downscale the precipitation
-            if (
-                config_xml["clim_filepath"] is not None
-                and config_xml["downscaling_factor"] is not None
-            ):
+            if config_xml["downscaling_factor"] is not None:
+                # 1. Check if there is a climatology dataset, if not download it
+                clim_file = get_climatology_dataset(
+                    config_xml=config_xml, work_dir=work_dir, logger=logger
+                )
+
+                # 2. Downscale the precpitation
                 precip_downscaled = downscale_gridded_precip(
                     precip_orig=os.path.join(work_dir, "input", "gridded_rainfall.nc"),
-                    clim_file=config_xml["clim_filepath"],
+                    clim_file=clim_file,
                     downscale_factor=config_xml["downscaling_factor"],
                     logger=logger,
                 )
@@ -206,12 +217,11 @@ def main():
                     config_xml["downscaling_factor"],
                 )
 
-                # 2. Store the downscaled precipitation in a netCDF
+                # 3. Store the downscaled precipitation in a netCDF
                 compression_settings = {
                     "zlib": True,
                     "complevel": 4,  # Compression level (1-9), higher means more compression
                 }
-
                 precip_downscaled.to_netcdf(
                     os.path.join(work_dir, "output", "downscaled_gridded_rainfall.nc"),
                     encoding={var: compression_settings for var in precip_downscaled.data_vars},
