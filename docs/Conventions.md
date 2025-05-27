@@ -33,4 +33,3 @@ The installation of python packages in the environment and `pyproject.toml` happ
 - Tests
 - Pre-commit checks
 - Typing
-- Change the main script in a class, ensuring that the logger can be passed on adequately. 
