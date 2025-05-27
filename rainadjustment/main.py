@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Main script that handles the gauge - gridded rainfall product
-adjustment procedure.
+adjustment procedure. The script calls either the downscaling module, the
+hindcasting adjustment procedure or the quantile mapping procedure.
 """
 
 import argparse

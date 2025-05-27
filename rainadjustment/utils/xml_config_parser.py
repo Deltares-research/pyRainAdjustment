@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Function to read xml runfile from Delft-FEWS, which are used as initial
-settings for radar rainfall nowcasting with pysteps.
+settings for pyRainAdjustment.
 
-The initial settings are used in the pysteps run script.
+Available functions:
+- parse_run_xml
 """
 
 import xml
