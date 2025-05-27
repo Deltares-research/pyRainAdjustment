@@ -92,7 +92,7 @@ def downscale_gridded_precip(
     # Now, calculate downscaling multiplication factor
     clim_coarse = ds_clim_clipped.rio.reproject_match(
         match_data_array=precip_coarse, resampling=Resampling.average
-    ).rio.reproject_match(match_data_array=precip_out, resampling=Resampling.average)
+    ).rio.reproject_match(match_data_array=precip_out, resampling=Resampling.nearest)
     clim_fine = ds_clim_clipped.rio.reproject_match(
         match_data_array=precip_out, resampling=Resampling.average
     )
