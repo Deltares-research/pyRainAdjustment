@@ -47,6 +47,8 @@ For commits, we follow the [conventional commits specification](https://www.conv
 - `test`: adding or updating tests, eg add integration tests using detox.
 - `chore`: tooling changes, e.g. change CI config.
 
+Make sure to use squash and merge upon merging pull requests.
+
 ### Python style conventions
 
 For predefined Python style conventions of this package, see [/docs/Conventions.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Conventions.md).
