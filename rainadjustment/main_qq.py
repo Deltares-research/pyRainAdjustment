@@ -19,7 +19,7 @@ def preprocess_FEWS_netCDF(input_ds):
     -------
 
     '''
-    ds = input_ds.assign_coords({'step': ('time', input_ds.time.values - input_ds.analysis_time.values)})
+    ds = input_ds.assign_coords({'step': ('time', input_ds.time.values - input_ds.time.values[0])})
     ds = ds.swap_dims({'time': 'step'})
     ds = ds.rename({'time': 'valid_time'})
     return ds
@@ -80,7 +80,7 @@ def Q_mapping_gridref(init_month: int, logger, preprocess_files=False):
     grid_hist = grid_hist.isel({'analysis_time': grid_hist.analysis_time.dt.day.values < 27})
     print(grid_hist.valid_time.values)
 
-    ref_hist = xr.load_dataset('./input/gridded_rainfall.nc')
+    ref_hist = xr.load_dataset('./input/reference_rainfall.nc')
     ref_hist = check_dimensions(ref_hist, logger=logger)
     ref_hist = ref_hist.sel({'time': np.unique(grid_hist.valid_time.values.flatten())})
     ref_hist['lon'] = np.round(ref_hist.lon.values, decimals=2)
