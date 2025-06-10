@@ -27,26 +27,6 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     ------------------------------------
     work_dir: string
         The working directory for the adjustment.
-    adjustment_method: string
-        The used adjustment method. Options are: MFB, Additive, Multiplicative,
-        Mixed. Defaults to None.
-    nearest_cells_to_use: int
-        The number of grid cells around (and including) the grid cell that
-        corresponds to the rain gauge location. Typically 9 cells are used to
-        account for rain drift due to wind effects. Defaults to 9.
-    statistical_function: str
-        Statistical function to find the value of the nearest cells that is
-        compared with the gauge value. Options are median, mean and best.
-        Defaults to median.
-    min_gauges: int
-        Minimum number of gauges that should be present in order to apply
-        the rain gauge adjustment method. Often, 5 gauges are used. Defaults
-        to 5.
-    kriging_n_gauges_to_use: int
-        The maximum number of neighbouring gauges the kriging algorithm uses
-        per gauge. If the total number of gauges is smaller than this value,
-        the total number of gauges is used in pyRainAdjustment. Defaults to
-        12.
     threshold: float
         The threshold value used. If a gauge or grid cell is below this value,
         it is not used in the adjustment procedure. For the additive
@@ -56,17 +36,48 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         rainfall per grid cell point. The values should be provided as float
         of the factor (e.g. 2.0 - max. two times smaller or bigger than
         orginal). Defaults to None.
+    nearest_cells_to_use: int
+        The number of grid cells around (and including) the grid cell that
+        corresponds to the rain gauge location. Typically 9 cells are used to
+        account for rain drift due to wind effects. Defaults to 9.
+    min_gauges: int
+        Minimum number of gauges that should be present in order to apply
+        the rain gauge adjustment method. Often, 5 gauges are used. Defaults
+        to 5.
+    kriging_n_gauges_to_use: int
+        The maximum number of neighbouring gauges the kriging algorithm uses
+        per gauge. If the total number of gauges is smaller than this value,
+        the total number of gauges is used in pyRainAdjustment. Defaults to
+        12.
+    downscaling_factor: int
+        The factor by which the gridded precipitation should be downscaled.
+        For instance, a factor of 2 indicates that the downscaled precipitation
+        will have a grid resolution that is two times finer than the original
+        grid resolution.
+    adjustment_method: string
+        The used adjustment method. Options are: MFB, Additive, Multiplicative,
+        Mixed. Defaults to None.
+    statistical_function: str
+        Statistical function to find the value of the nearest cells that is
+        compared with the gauge value. Options are median, mean and best.
+        Defaults to median.
     interpolation_method: str
         The interpolation method that should be used. An interpolation method
         from https://docs.wradlib.org/en/latest/ipol.html should be provided.
         Defaults to Idw (inverse distance weighting).
     clim_filepath: str
         The filepath to the monthly climatology netCDF file.
-    downscaling_factor: int
-        The factor by which the gridded precipitation should be downscaled.
-        For instance, a factor of 2 indicates that the downscaled precipitation
-        will have a grid resolution that is two times finer than the original
-        grid resolution.
+    variogram_model: str
+        The variogram model used for the Kriging interpolation. Defaults to
+        "standard".
+    derive_qmapping_factors: bool
+        Setting to derive the quantile mapping factors or not. Defaults to False.
+    qmapping_month: int | None
+        The month for which the quantile mapping factors should be derived.
+        Defaults to None.
+    leadtime_specific_factors: bool
+        Setting to derive lead-time specific qq correction factors (when True) or
+        one factor for all leadtimes (when False). Defaults to False.
     """
     # Set the indir + filename of the used xml file
     input_xml = xml_file
@@ -89,6 +100,9 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     interpolation_method = "Idw"
     clim_filepath = None
     variogram_model = "standard"
+    derive_qmapping_factors = False
+    qmapping_month = None
+    leadtime_specific_factors = False
 
     output_dict = {
         "work_dir": work_dir,
@@ -103,6 +117,9 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         "interpolation_method": interpolation_method,
         "clim_filepath": clim_filepath,
         "variogram_model": variogram_model,
+        "derive_qmapping_factors": derive_qmapping_factors,
+        "qmapping_month": qmapping_month,
+        "leadtime_specific_factors": leadtime_specific_factors,
     }
 
     properties = doc.getElementsByTagName("float")
@@ -116,5 +133,9 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     properties = doc.getElementsByTagName("string")
     for prop in properties:
         output_dict.update({prop.attributes["key"].value: prop.getAttribute("value")})
+
+    properties = doc.getElementsByTagName("bool")
+    for prop in properties:
+        output_dict.update({prop.attributes["key"].value: prop.getAttribute("value").lower()})
 
     return output_dict

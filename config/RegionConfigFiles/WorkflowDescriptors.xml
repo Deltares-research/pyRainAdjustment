@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workflowDescriptors xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/workflowDescriptors.xsd" version="1.0">
-	<workflowDescriptor id="Meteo_Rain_Gauge_Adjustment_HSAF" name="Bias correct HSAF" visible="true" forecast="false" autoApprove="true" allowApprove="true">
+	<workflowDescriptor id="Meteo_Rain_Gauge_Adjustment_ERA5" name="Bias correct ERA5" visible="true" forecast="false" autoApprove="true" allowApprove="true">
 		<properties>
 			<string key="MODULEINSTANCE_ID" value="pyRainAdjustment"/>
 			<string key="PRECIP_ID_TO_ADJUST" value="ImportERA5"/>
@@ -55,8 +55,8 @@
 	</workflowDescriptor>
 	<rootNode>
 		<node name="Process">
-			<workflowId>Meteo_Rain_Gauge_Adjustment_HSAF</workflowId>
-			<workflowId>Meteo_Rain_Downscaling_HSAF</workflowId>
+			<workflowId>Meteo_Rain_Gauge_Adjustment_ERA5</workflowId>
+			<workflowId>Meteo_Rain_Downscaling_ERA5</workflowId>
 			<workflowId>Meteo_Rain_Downscaling_Gauge_Adjustment_ERA5</workflowId>
 		</node>
 	</rootNode>

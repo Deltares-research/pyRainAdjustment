@@ -3,3 +3,4 @@
 from functions.adjusters import *
 from functions.climatology_preprocessor import *
 from functions.downscaling import *
+from functions.qq_mapping import *
