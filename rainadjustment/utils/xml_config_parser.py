@@ -67,6 +67,8 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         Defaults to Idw (inverse distance weighting).
     clim_filepath: str
         The filepath to the monthly climatology netCDF file.
+    qq_filepath: str
+        The filepath to the quantile mapping fators.
     variogram_model: str
         The variogram model used for the Kriging interpolation. Defaults to
         "standard".
@@ -99,6 +101,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     statistical_function = "median"
     interpolation_method = "Idw"
     clim_filepath = None
+    qq_filepath = None
     variogram_model = "standard"
     derive_qmapping_factors = False
     qmapping_month = None
@@ -116,6 +119,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         "statistical_function": statistical_function,
         "interpolation_method": interpolation_method,
         "clim_filepath": clim_filepath,
+        "qq_filepath": qq_filepath,
         "variogram_model": variogram_model,
         "derive_qmapping_factors": derive_qmapping_factors,
         "qmapping_month": qmapping_month,

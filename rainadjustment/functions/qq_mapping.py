@@ -96,6 +96,7 @@ def create_qmapping_factors(
 def derive_and_store_qmapping_factors(
     init_month: int,
     work_dir: str,
+    qq_factors_folder: str,
     logger: logging.Logger,
     preprocess_files: bool = False,
     leadtime_specific: bool = False,
@@ -115,6 +116,9 @@ def derive_and_store_qmapping_factors(
         The initialization month (1 - 12) used to filter the historical forecasts.
     work_dir : str
         Working directory containing input and output subdirectories.
+    qq_factors_folder : str
+        The filepath to the folder where the quantile mapping correction factors should be
+        stored.
     logger : logging.Logger
         Logger instance for logging progress and diagnostics.
     preprocess_files : bool, optional
@@ -140,8 +144,8 @@ def derive_and_store_qmapping_factors(
         os.mkdir(os.path.join(work_dir, "input"))
     if not os.path.isdir(os.path.join(work_dir, "input", "historic_forecasts")):
         os.mkdir(os.path.join(work_dir, "input", "historic_forecasts"))
-    if not os.path.isdir(os.path.join(work_dir, "qq_correction_factors")):
-        os.mkdir(os.path.join(work_dir, "qq_correction_factors"))
+    if not os.path.isdir(qq_factors_folder):
+        os.mkdir(qq_factors_folder)
 
     # Load the forecast datasets and pre-process if needed
     logger.info("Loading and pre-processing the datasets")
@@ -209,9 +213,7 @@ def derive_and_store_qmapping_factors(
     q_array = q_array.assign_coords(percentile=np.linspace(0, 1, 201))
     q_array = q_array.to_dataset(dim="variable")
     q_array = q_array.rename({0: "correction_factors", 1: "forecast_P_at_q", 2: "obs_P_at_q"})
-    q_array.to_netcdf(
-        os.path.join(work_dir, "qq_correction_factors", f"grid_quantile_correction_{init_month}.nc")
-    )
+    q_array.to_netcdf(os.path.join(qq_factors_folder, f"grid_quantile_correction_{init_month}.nc"))
 
 
 def preprocess_netcdf_for_qmapping(input_ds: xr.Dataset) -> xr.Dataset:

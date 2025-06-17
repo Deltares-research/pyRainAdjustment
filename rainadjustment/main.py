@@ -242,6 +242,21 @@ def apply_quantile_mapping(
     None
         The function performs file I/O and logging but does not return any value.
     """
+    # Get the filepath for the correction factors
+    if config_xml["qq_filepath"] is not None:
+        if os.path.exists(config_xml["qq_filepath"]):
+            logger.info(
+                "Quantile mapping file path provided, using the following qq mapping file: %s",
+                config_xml["qq_filepath"],
+            )
+            qq_factors_folder = config_xml["qq_filepath"]
+        else:
+            logger.warning("Provided quantile mapping file path not found")
+            qq_factors_folder = os.path.join(work_dir, "qq_correction_factors")
+    else:
+        logger.info("Using default quantile mapping file path")
+        qq_factors_folder = os.path.join(work_dir, "qq_correction_factors")
+
     # Check if the quantile mapping factors need to be derived
     if config_xml["derive_qmapping_factors"]:
         logger.info("Requested to derive the quantile mapping factors")
@@ -259,6 +274,7 @@ def apply_quantile_mapping(
             derive_and_store_qmapping_factors(
                 init_month=month_num,
                 work_dir=work_dir,
+                qq_factors_folder=qq_factors_folder,
                 logger=logger,
                 preprocess_files=True,
                 leadtime_specific=config_xml["leadtime_specific_factors"],
@@ -282,9 +298,7 @@ def apply_quantile_mapping(
         corrections = qmapping_correction_factors(
             grid_forecast=forecast,
             grid_clim_path=os.path.join(
-                work_dir,
-                "qq_correction_factors",
-                f"grid_quantile_correction_{month_int}.nc",
+                qq_factors_folder, f"grid_quantile_correction_{month_int}.nc"
             ),
         )
 
