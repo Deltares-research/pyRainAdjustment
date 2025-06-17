@@ -140,6 +140,9 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
 
     properties = doc.getElementsByTagName("bool")
     for prop in properties:
-        output_dict.update({prop.attributes["key"].value: prop.getAttribute("value").lower()})
+        key = prop.attributes["key"].value
+        value_str = prop.getAttribute("value").strip().lower()
+        value = value_str == "true"
+        output_dict[key] = value
 
     return output_dict
