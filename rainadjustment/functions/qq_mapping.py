@@ -25,7 +25,6 @@ def apply_qmap_correction(
     forecast: xr.DataArray,
     historical_data: npt.NDArray[np.float64],
     cor_factor: npt.NDArray[np.float64],
-    logger: logging.Logger,
 ) -> tuple[npt.NDArray[np.float64], xr.DataArray]:
     """
     Apply quantile mapping correction to a forecast using historical data and correction factors.
@@ -42,8 +41,6 @@ def apply_qmap_correction(
         1D array containing the historical forecast distribution corresponding to percentiles.
     cor_factor : np.ndarray
         1D array of correction factors associated with the percentiles of the historical data.
-    logger : logging.Logger
-        Logger instance for logging the correction process.
 
     Returns
     -------
@@ -51,7 +48,6 @@ def apply_qmap_correction(
         A 2D array where the first row contains the interpolated correction factors and the
         second row contains the corrected forecast values.
     """
-    logger.info("Apply quantile mapping corrections")
     correction = np.interp(forecast, historical_data, cor_factor)
     # Cap the correction factors
     apply_corr = np.where(correction > 1000, 1000, correction)

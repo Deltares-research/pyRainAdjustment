@@ -28,7 +28,7 @@
 				<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 			</exportDataSetActivity>
 			<exportNetcdfActivity>
-				<exportFile>forecast.nc</exportFile>
+				<exportFile>gridded_rainfall_forecast.nc</exportFile>
 				<netcdfFormat>netcdf4</netcdfFormat>
 				<timeSeriesSets>
 					<timeSeriesSet>
