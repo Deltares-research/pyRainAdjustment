@@ -53,11 +53,36 @@
 			<string key="VARIOGRAM_MODEL" value="auto_derive"/>
 		</properties>
 	</workflowDescriptor>
+	<workflowDescriptor forecast="true" id="Process_Determine_QuantileMapping" name="Bias correction fitting quantile mapping" visible="true" autoApprove="true" allowApprove="true">
+		<properties>
+			<string key="MODULEINSTANCE_ID" value="pyRainAdjustment"/>
+			<string key="PRECIP_ID_TO_ADJUST" value="ImportIFS"/>
+			<string key="ID_METEO_INPUT" value="ImportERA5Land"/>
+			<string key="LOCATION_ID" value="IFS"/>
+			<string key="QQ_FILEPATH" value="%REGION_HOME%/Modules/pyRainAdjustment/qq_correction_factors"/>
+			<int key="QMAPPING_MONTH" value="3"/>
+			<bool key="DERIVE_QMAPPING_FACTORS" value="true"/>
+			<bool key="LEADTIME_SPECIFIC_FACTORS" value="false"/>
+		</properties>
+	</workflowDescriptor>
+	<workflowDescriptor forecast="true" id="Process_Apply_QuantileMapping" name="Apply quantile mapping" visible="true" autoApprove="true" allowApprove="true">
+		<properties>
+			<string key="MODULEINSTANCE_ID" value="pyRainAdjustment"/>
+			<string key="PRECIP_ID_TO_ADJUST" value="ImportIFS"/>
+			<string key="LOCATION_ID" value="IFS"/>
+			<string key="QQ_FILEPATH" value="%REGION_HOME%/Modules/pyRainAdjustment/qq_correction_factors"/>
+			<int key="QMAPPING_MONTH" value="3"/>
+			<bool key="DERIVE_QMAPPING_FACTORS" value="false"/>
+			<bool key="LEADTIME_SPECIFIC_FACTORS" value="false"/>
+		</properties>
+	</workflowDescriptor>
 	<rootNode>
 		<node name="Process">
 			<workflowId>Meteo_Rain_Gauge_Adjustment_ERA5</workflowId>
 			<workflowId>Meteo_Rain_Downscaling_ERA5</workflowId>
 			<workflowId>Meteo_Rain_Downscaling_Gauge_Adjustment_ERA5</workflowId>
+			<workflowId>Process_Determine_QuantileMapping</workflowId>
+			<workflowId>Process_Apply_QuantileMapping</workflowId>
 		</node>
 	</rootNode>
 </workflowDescriptors>

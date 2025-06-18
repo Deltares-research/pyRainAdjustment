@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<timeSeriesExportRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews http://fews.wldelft.nl/schemas/version1.0/timeSeriesExportRun.xsd">
+	<export>
+		<general>
+			<exportType>NETCDF-CF_GRID</exportType>
+			<folder>%REGION_HOME%/Modules/pyRainAdjustment/input/historic_forecasts</folder>
+			<exportFileName>
+				<name>.nc</name>
+				<prefix>
+					<timeZeroFormattingString>yyyyMMddHH</timeZeroFormattingString>
+				</prefix>
+			</exportFileName>
+			<idMapId>IdAdjustmentFactor</idMapId>
+			<exportMissingValueString>-9999.0</exportMissingValueString>
+		</general>
+		<timeSeriesSets>
+			<timeSeriesSet>
+				<moduleInstanceId>$PRECIP_ID_TO_ADJUST$</moduleInstanceId>
+				<valueType>grid</valueType>
+				<parameterId>P_fcst</parameterId>
+				<locationId>$LOCATION_ID$</locationId>
+				<timeSeriesType>external forecasting</timeSeriesType>
+				<timeStep unit="hour" multiplier="1" timeZone="GMT"/>
+				<relativeViewPeriod unit="hour" end="89" start="0" startOverrulable="true" endOverrulable="true"/>
+				<readWriteMode>read only</readWriteMode>
+				<ensembleId>main</ensembleId>
+				<ensembleMemberIndex>0</ensembleMemberIndex>
+			</timeSeriesSet>
+		</timeSeriesSets>
+	</export>
+</timeSeriesExportRun>

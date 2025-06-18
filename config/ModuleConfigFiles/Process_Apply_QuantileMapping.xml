@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <generalAdapterRun xmlns="http://www.wldelft.nl/fews" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.wldelft.nl/fews https://fewsdocs.deltares.nl/schemas/version1.0/generalAdapterRun.xsd">
 	<general>
-		<description>Adjust a gridded rainfall product with the available rain gauges</description>
+		<description>Determine the quantile mapping adjustment factors</description>
 		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
 		<exportDir>%ROOT_DIR%/input</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
-		<exportIdMap>IdQuantileMapping</exportIdMap>
+		<exportIdMap>IdAdjustmentFactor</exportIdMap>
 		<importDir>%ROOT_DIR%/output</importDir>
-		<importIdMap>IdQuantileMapping</importIdMap>
+		<importIdMap>IdAdjustmentFactor</importIdMap>
 		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
 		<diagnosticFile>%ROOT_DIR%/pyRainAdjustment_module_diag.xml</diagnosticFile>
@@ -27,23 +27,6 @@
 			<exportDataSetActivity>
 				<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 			</exportDataSetActivity>
-			<exportNetcdfActivity>
-				<exportFile>reference_rainfall.nc</exportFile>
-				<netcdfFormat>netcdf4</netcdfFormat>
-				<timeSeriesSets>
-					<timeSeriesSet>
-						<moduleInstanceId>$ID_METEO_INPUT$</moduleInstanceId>
-						<valueType>grid</valueType>
-						<parameterId>P_obs</parameterId>
-						<locationId>$LOCATION_ID$</locationId>
-						<timeSeriesType>external historical</timeSeriesType>
-						<timeStep unit="hour" multiplier="1" timeZone="GMT"/>
-						<relativeViewPeriod unit="day" end="0" start="-4500" startOverrulable="true" endOverrulable="true"/>
-						<readWriteMode>read only</readWriteMode>
-					</timeSeriesSet>
-				</timeSeriesSets>
-				<checkMissing>true</checkMissing>
-			</exportNetcdfActivity>
 			<exportNetcdfActivity>
 				<exportFile>forecast.nc</exportFile>
 				<netcdfFormat>netcdf4</netcdfFormat>
@@ -65,6 +48,12 @@
 			</exportNetcdfActivity>
 			<exportRunFileActivity>
 				<exportFile>adjustment_settings.xml</exportFile>
+				<properties>
+					<string key="qq_filepath" value="$QQ_FILEPATH$"/>
+					<int key="qmapping_month" value="$QMAPPING_MONTH$"/>
+					<bool key="derive_qmapping_factors" value="$DERIVE_QMAPPING_FACTORS$"/>
+					<bool key="leadtime_specific_factors" value="$LEADTIME_SPECIFIC_FACTORS$"/>
+				</properties>
 			</exportRunFileActivity>
 		</exportActivities>
 		<executeActivities>
@@ -73,7 +62,11 @@
 					<executable>%REGION_HOME%/Modules/python/python.exe</executable>
 				</command>
 				<arguments>
-					<argument>main_qq.py</argument>
+					<argument>main.py</argument>
+					<argument>--xml_config</argument>
+					<argument>input/adjustment_settings.xml</argument>
+					<argument>--requested_functionality</argument>
+					<argument>qq_mapping</argument>
 				</arguments>
 				<console>
 					<redirectToLogFile>%ROOT_DIR%/logs/%TIME0%_pyRainAdjustment_console.txt</redirectToLogFile>
