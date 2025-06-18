@@ -15,6 +15,7 @@ import os
 
 import numpy as np
 import numpy.typing as npt
+from numpy import inf
 import xarray as xr
 
 from utils.io import check_dimensions
@@ -54,6 +55,8 @@ def apply_qmap_correction(
     correction = np.interp(forecast, historical_data, cor_factor)
     # Cap the correction factors
     apply_corr = np.where(correction > 1000, 1000, correction)
+    # Also fill nans in the correction factors
+    apply_corr = np.nan_to_num(apply_corr, nan=1.0)
 
     return np.array([correction, forecast * apply_corr])
 
@@ -89,6 +92,9 @@ def create_qmapping_factors(
     obs_q = np.nanquantile(obs_values, q=np.linspace(0, 1, 201))
     # Determine the correction factors
     correction_factors = obs_q / grid_q
+    # Make sure there are no infinitives in the correction factors
+    correction_factors[correction_factors == -inf] = np.nan
+    correction_factors[correction_factors == inf] = np.nan
 
     return np.array([correction_factors, grid_q, obs_q])
 
@@ -165,7 +171,7 @@ def derive_and_store_qmapping_factors(
     select_timestamps = grid_hist.analysis_time.dt.month.values == init_month
     grid_hist = grid_hist.isel({"analysis_time": select_timestamps})
     grid_hist = grid_hist.isel({"analysis_time": grid_hist.analysis_time.dt.day.values < 27})
-    print(grid_hist.valid_time.values)
+    logger.info("Valid times in this forecast are: %s", grid_hist.valid_time.values)
 
     # Load and prep-process the gridded reference data
     logger.info("Loading and pre-processing the reference dataset")
