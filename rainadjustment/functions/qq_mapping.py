@@ -12,13 +12,15 @@ Available functions:
 import glob
 import logging
 import os
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from numpy import inf
 import xarray as xr
 
-from utils.io import check_dimensions
+from utils.io import check_dimensions, obtain_gauge_information, obtain_gridded_rainfall_information
+from utils.utils import get_interpolation_method, interpolate
 
 
 def apply_qmap_correction(
@@ -99,9 +101,9 @@ def derive_and_store_qmapping_factors(
     init_month: int,
     work_dir: str,
     qq_factors_folder: str,
+    config_xml: dict[str, Any],
     logger: logging.Logger,
     preprocess_files: bool = False,
-    leadtime_specific: bool = False,
 ) -> None:
     """
     Generate quantile mapping correction factors for a gridded forecast dataset.
@@ -121,14 +123,13 @@ def derive_and_store_qmapping_factors(
     qq_factors_folder : str
         The filepath to the folder where the quantile mapping correction factors should be
         stored.
+    config_xml : dict[str, Any]
+        Configuration dictionary containing all settings.
     logger : logging.Logger
         Logger instance for logging progress and diagnostics.
     preprocess_files : bool, optional
         If True, preprocess and combine individual NetCDF files from the historic forecast
         directory. If False, load a pre-combined dataset. Default is False.
-    leadtime_specific : bool, optional
-        If True, compute correction factors separately for each lead time. If False, compute
-        a single set of factors across all lead times. Default is False.
 
     Returns
     -------
@@ -171,14 +172,33 @@ def derive_and_store_qmapping_factors(
 
     # Load and prep-process the gridded reference data
     logger.info("Loading and pre-processing the reference dataset")
-    reference_hist = xr.load_dataset(os.path.join(work_dir, "input", "reference_rainfall.nc"))
-    reference_hist = check_dimensions(reference_hist, logger=logger)
-    reference_hist["lon"] = np.round(reference_hist.lon.values, decimals=2)
-    reference_hist["lat"] = np.round(reference_hist.lat.values, decimals=2)
+    # First check if a gridded reference product is provided or point measurements from rain gauges
+    if not config_xml["gridded_reference_product"]:
+        # Import the gauge data and interpolate it on the forecast grid
+        obs_gridded = __interpolate_gauge_to_grid(
+            work_dir=work_dir, config_xml=config_xml, logger=logger
+        )
+        # Also read the data from the observations to extract the time dimension
+        files = glob.glob(os.path.join(work_dir, "input", "*_Gauges.nc"))
+        ds_gauges = xr.open_mfdataset(files)
+        # Set the latitude and longitude based on the gridded forecast file
+        reference_hist = xr.Dataset(
+            data_vars={"P": (("time", "lat", "lon"), obs_gridded)},
+            coords={"time": ds_gauges.time, "lat": grid_hist["lat"], "lon": grid_hist["lon"]},
+        )
+        reference_hist = check_dimensions(reference_hist, logger=logger)
+
+    else:
+        # Prepare the reference dataset
+        logger.info("Provided reference dataset is gridded, directly continue to loading the data")
+        reference_hist = xr.load_dataset(os.path.join(work_dir, "input", "reference_rainfall.nc"))
+        reference_hist = check_dimensions(reference_hist, logger=logger)
+        reference_hist["lon"] = np.round(reference_hist.lon.values, decimals=2)
+        reference_hist["lat"] = np.round(reference_hist.lat.values, decimals=2)
 
     # Compute the quantile mapping correction factors
     grid_hist = grid_hist.compute()
-    if not leadtime_specific:
+    if not config_xml["leadtime_specific_factors"]:
         logger.info(
             "Computing the quantile mapping correction factors. No lead-time dependency requested."
         )
@@ -291,3 +311,62 @@ def qmapping_correction_factors(
     )
 
     return corrections
+
+
+def __interpolate_gauge_to_grid(
+    work_dir: str,
+    config_xml: dict[str, Any],
+    logger: logging.Logger,
+) -> npt.NDArray[np.float64]:
+    """
+    Interpolate point-based rain gauge measurements to the gridded_forecast grid.
+
+    Parameters
+    ----------
+    work_dir : str
+        Working directory containing input and output subdirectories.
+    config_xml : dict[str, Any]
+        Configuration dictionary containing all settings.
+    logger : logging.Logger
+        Logger instance for logging progress and diagnostics.
+
+    Returns
+    ------
+    obs_gridded: ndarray(float)
+            The interpolated values on the location of the grid_coords.
+    """
+    logger.info(
+        "The provided references product contains point observations. First interpolate it to the forecast grid"
+    )
+    logger.info(
+        "Interpolate the gauge values to a grid using the interpolation method: %s",
+        config_xml["interpolation_method"],
+    )
+    # Get the interpolator
+    interpolation_method = get_interpolation_method(config_xml, logger=logger)
+
+    # Import the point observations
+    obs_coords, _, obs_values = obtain_gauge_information(
+        gauge_folder=os.path.join(work_dir, "input"), logger=logger
+    )
+    logger.info("Rain gauge information read successfully.")
+
+    # Also get all gridded rainfall information
+    grid_coords, _, grid_shape = obtain_gridded_rainfall_information(
+        grid_file=os.path.join(work_dir, "input", "combined_historic_forecasts.nc"),
+        logger=logger,
+    )
+    logger.info("Output grid defined.")
+    # Interpolate it on a grid per timestep
+    obs_gridded = []
+    for t in range(obs_values.shape[0]):
+        obs_gridded_temp = interpolate(
+            interpolation_method=interpolation_method,
+            obs_coords=obs_coords,
+            grid_coords=grid_coords,
+            values_to_interpolate=obs_values[t],
+        )
+        obs_gridded.append(np.reshape(obs_gridded_temp, grid_shape))
+    logger.info("Interpolation finished successfully.")
+
+    return np.array(obs_gridded)

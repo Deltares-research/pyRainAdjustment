@@ -80,6 +80,10 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     leadtime_specific_factors: bool
         Setting to derive lead-time specific qq correction factors (when True) or
         one factor for all leadtimes (when False). Defaults to False.
+    gridded_reference_product: bool
+        Setting to indicate whether the reference rainfall for the quantile mapping
+        procedure is a gridded product (True) or contains point observations from
+        rain gauges (False).
     """
     # Set the indir + filename of the used xml file
     input_xml = xml_file
@@ -106,6 +110,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     derive_qmapping_factors = False
     qmapping_month = None
     leadtime_specific_factors = False
+    gridded_reference_product = True
 
     output_dict = {
         "work_dir": work_dir,
@@ -124,6 +129,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         "derive_qmapping_factors": derive_qmapping_factors,
         "qmapping_month": qmapping_month,
         "leadtime_specific_factors": leadtime_specific_factors,
+        "gridded_reference_product": gridded_reference_product,
     }
 
     properties = doc.getElementsByTagName("float")

@@ -275,9 +275,9 @@ def apply_quantile_mapping(
                 init_month=month_num,
                 work_dir=work_dir,
                 qq_factors_folder=qq_factors_folder,
+                config_xml=config_xml,
                 logger=logger,
                 preprocess_files=True,
-                leadtime_specific=config_xml["leadtime_specific_factors"],
             )
     else:
         # Apply the qq mapping factors
