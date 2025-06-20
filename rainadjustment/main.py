@@ -300,6 +300,7 @@ def apply_quantile_mapping(
             grid_clim_path=os.path.join(
                 qq_factors_folder, f"grid_quantile_correction_{month_int}.nc"
             ),
+            logger=logger,
         )
 
         # Post-process the correction factors

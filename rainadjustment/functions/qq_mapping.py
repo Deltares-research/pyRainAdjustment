@@ -8,6 +8,7 @@ Available functions:
 - derive_and_store_qmapping_factors
 - preprocess_netcdf_for_qmapping
 - qmapping_correction_factors
+- __interpolate_gauge_to_grid
 """
 import glob
 import logging
@@ -27,6 +28,7 @@ def apply_qmap_correction(
     forecast: xr.DataArray,
     historical_data: npt.NDArray[np.float64],
     cor_factor: npt.NDArray[np.float64],
+    logger: logging.Logger,
 ) -> tuple[npt.NDArray[np.float64], xr.DataArray]:
     """
     Apply quantile mapping correction to a forecast using historical data and correction factors.
@@ -43,6 +45,8 @@ def apply_qmap_correction(
         1D array containing the historical forecast distribution corresponding to percentiles.
     cor_factor : np.ndarray
         1D array of correction factors associated with the percentiles of the historical data.
+    logger : logging.Logger
+        Logger instance for logging progress and diagnostics.
 
     Returns
     -------
@@ -55,6 +59,10 @@ def apply_qmap_correction(
     apply_corr = np.where(correction > 1000, 1000, correction)
     # Also fill nans in the correction factors
     apply_corr = np.nan_to_num(apply_corr, nan=1.0)
+    if np.isnan(apply_corr).all():
+        logger.info(
+            "Correction only contains nan values, original gridded forecast will be returned."
+        )
 
     return np.array([correction, forecast * apply_corr])
 
@@ -167,7 +175,6 @@ def derive_and_store_qmapping_factors(
     grid_hist["lat"] = np.round(grid_hist.lat.values, decimals=2)
     select_timestamps = grid_hist.analysis_time.dt.month.values == init_month
     grid_hist = grid_hist.isel({"analysis_time": select_timestamps})
-    grid_hist = grid_hist.isel({"analysis_time": grid_hist.analysis_time.dt.day.values < 27})
     logger.info("Valid times in this forecast are: %s", grid_hist.valid_time.values)
 
     # Load and prep-process the gridded reference data
@@ -269,7 +276,9 @@ def preprocess_netcdf_for_qmapping(input_ds: xr.Dataset) -> xr.Dataset:
 
 
 def qmapping_correction_factors(
-    grid_forecast: xr.Dataset, grid_clim_path: str
+    grid_forecast: xr.Dataset,
+    grid_clim_path: str,
+    logger: logging.Logger,
 ) -> tuple[npt.NDArray[np.float64], xr.DataArray]:
     """
     Apply quantile mapping correction to a forecast dataset using precomputed climatological
@@ -284,6 +293,8 @@ def qmapping_correction_factors(
     grid_clim_path : str
         Path to the NetCDF file containing climatological correction factors and forecast
         percentiles.
+    logger : logging.Logger
+        Logger instance for logging progress and diagnostics.
 
     Returns
     -------
@@ -305,6 +316,7 @@ def qmapping_correction_factors(
         grid_forecast.P,
         distribution,
         factors,
+        logger,
         input_core_dims=[[], ["percentile"], ["percentile"]],
         output_core_dims=[["variable"]],
         vectorize=True,
