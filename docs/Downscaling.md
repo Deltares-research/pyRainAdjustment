@@ -14,5 +14,8 @@ As a standard climatology dataset, we recommend using the WorldClim2 dataset by 
 
 When no climatology product is available, pyRainAdjustment will automatically download and prepare the WorldClim2 monthly precipitation climatology on 1-km resolution (Fick and Hijmans, 2017). This climatology is placed in the 'clim' sub folder of the pyRainAdjustment module in Delft-FEWS, so in principle this step only has to take place once (and takes approximately 10 minutes).  
 
+![image](https://github.com/user-attachments/assets/70dbf453-a88d-4c65-87ec-368cd7adc3fe)
+Example of climatology-based downscaling of daily ERA5 reanalysis data over Southeastern Australia on 2024-11-30. Shown are (a) the original spatial resolution (approximately 30 km) to (b) a resolution of 3 km. 
+
 ## References
 Fick, Stephen E., and Robert J. Hijmans. ‘WorldClim 2: New 1-Km Spatial Resolution Climate Surfaces for Global Land Areas’. International Journal of Climatology 37, no. 12 (2017): 4302–15. https://doi.org/10.1002/joc.5086.
