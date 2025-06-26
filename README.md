@@ -2,6 +2,11 @@
 
 Python toolset to downscale and correct gridded rainfall products using rain gauges. This tool interacts with Delft-FEWS and takes as input a netCDF of gridded rainfall (or other meteorological) product and one or multiple netCDF(s) containing the rain gauge information. It returns a field of correction factors as a netCDF that can be read by Delft-FEWS.
 
+pyRainAdjustment offers the following tools:
+- Gridded rainfall downscaling using a climatology-based downscaling procedure.
+- Gridded rainfall adjustment in a hindcasting mode. For this, the following methods can be used: mean field bias adjustments, additive, multiplicative and mixed error model correction, and kriging with external drift adjustment.
+- Gridded rainfall adjustment in a forecasting mode through quantile mapping.
+
 ## Installation
 
 Make sure you have a Python package manager, such as mamba, micromamba or miniforge. 
@@ -17,6 +22,9 @@ Then, in a command prompt or shell, run:
 `mamba activate rainadjustment`
 
 `poetry install`
+
+## How to use pyRainAdjustment
+A background on the various options and methods in pyRainAdjustment is provided under: [/docs/Downscaling.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Downscaling.md) for the downscaling method, [/docs/Hindcasting_adjustments.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Hindcasting_adjustments.md) for the adjustment methods in hindcasting mode and [/docs/Forecasting_adjustment.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Forecasting_adjustment.md) for the adjustment methods in forecasting mode. Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md).
 
 ## License
 
