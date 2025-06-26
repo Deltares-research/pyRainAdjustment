@@ -17,5 +17,8 @@ When no climatology product is available, pyRainAdjustment will automatically do
 ![image](https://github.com/user-attachments/assets/70dbf453-a88d-4c65-87ec-368cd7adc3fe)
 Example of climatology-based downscaling of daily ERA5 reanalysis data over Southeastern Australia on 2024-11-30. Shown are (a) the original spatial resolution (approximately 30 km) to (b) a resolution of 3 km. 
 
+## Usage in Delft-FEWS
+Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md). For downscaling, have a look at [/config/ModuleConfigFiles/ProcessRainDownscaling.xml](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/ModuleConfigFiles/ProcessRainDownscaling).
+
 ## References
 Fick, Stephen E., and Robert J. Hijmans. ‘WorldClim 2: New 1-Km Spatial Resolution Climate Surfaces for Global Land Areas’. International Journal of Climatology 37, no. 12 (2017): 4302–15. https://doi.org/10.1002/joc.5086.
