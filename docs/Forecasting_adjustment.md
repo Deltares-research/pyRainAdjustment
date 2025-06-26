@@ -1,0 +1,15 @@
+# Adjustment Methods in Forecasting Mode
+
+
+
+PyRainAdjustment approaches quantile mapping with a few standard options. It will group all historic forecasts and reference data based on the forecast month. This means that all forecasts with an issue time (t0) in, for instance, March will be corrected based on the distributions of historic forecasts and reference data from March. Thus, a forecast that starts at the end of March and extends into April will only be using the March correction factors. 
+
+The method requires a few arguments to be able to run. First of all, the argument "derive_qmapping_factors" needs to be passed to indicate whether new correction files, which form the basis of the method in forecasting mode, need to be computed. If that is the case, pay attention that the forecast time is right at the end of your historic reference period, otherwise parts of the reference period will be missing or data outside of the period might accidentally be included (also note that the exported forecasts should match the time span of the reference data, because pyRainAdjustment does currently not check for that). 
+
+Standard, pyRainAdjustment will store correction factors for all lead times together, meaning that it will provide one correction factor that is the same for all lead times, but that varies based on the location in the grid and the month of the issue time. However, the argument “leadtime_specific” (by default ‘False’) can be overwritten to compute correction factors for each leadtime within the provided data. Depending on the provided data, this might be prone to overfitting, which is why it is set to ‘False’ by default.
+
+Once the quantile mapping correction factors have been derived, they are stored in a separate folder, which can be defined by the user or, otherwise, they will be automatically placed in a folder called “qq_correction_factors” in the pyRainAdjustment module folder. From here on, the quantile mapping workflow can be called with "derive_qmapping_factors" set to False and by providing a forecast. Based on that, pyRainAdjustment will search for the month corresponding to the issue time of the forecast and the right lead times (if “leadtime_specific” is True). The gridded rainfall forecast is then corrected based on the quantile the forecast for each grid cell falls in.
+
+
+## Usage in Delft-FEWS
+Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md). The different adjustment methods can be provided to the Delft-FEWS model adapter (General Adapter) by providing the property key `adjustment_method`, which can be one of the following methods: `MFB`, `additive`, `multiplicative`, `mixed`, `KED` and `quantile_mapping`.
