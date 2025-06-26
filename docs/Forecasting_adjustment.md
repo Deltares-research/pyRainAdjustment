@@ -7,7 +7,7 @@ There are a variety of quantile mapping methods available (Cannon et al., 2015),
 
 Instead, a relatively simple and robust method is to apply quantile mapping using the empirical cumulative density function, which in essence finds the values of both forecast and reference data at a regular quantile interval (each percentile, for example) throughout a reference period. Afterwards, it computes adjustment factors for each quantile of the distribution (see the figure below). A forecast that falls in between percentiles will find the required correction by linearly interpolating between the adjustment factors. This poses a challenge for the extremes, where a forecast value that was larger than the maximum in the reference period will be extrapolated, which is not always accurate. At the same time, this method assumes stationarity of the distribution in the future, which seldomly holds in environmental forecasting due to the effects of climate change. Even though these concerns exist, the simplicity of the methodology and its robustness are the main reasons for its widespread adoption. These reasons are also our main rationale to implement the empirical cumulative density function-based quantile mapping in pyRainAdjustment.
 
-
+![image](https://github.com/user-attachments/assets/9181790d-5ee8-4bed-93e6-1b1f1cd5e656)
 Example of empirical quantile mapping (from Ringard et al., 2017)
 
 ## Quantile mapping in pyRaindAdjustment
@@ -19,6 +19,7 @@ Standard, pyRainAdjustment will store correction factors for all lead times toge
 
 Once the quantile mapping correction factors have been derived, they are stored in a separate folder, which can be defined by the user or, otherwise, they will be automatically placed in a folder called `qq_correction_factors` in the pyRainAdjustment module folder. From here on, the quantile mapping workflow can be called with `derive_qmapping_factors` set to `False` and by providing a forecast. Based on that, pyRainAdjustment will search for the month corresponding to the issue time of the forecast and the right lead times (if `leadtime_specific` is `True`). The gridded rainfall forecast is then corrected based on the quantile the forecast for each grid cell falls in. For all configuration options, see [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md).
 
+![image](https://github.com/user-attachments/assets/f0b0bf69-5276-4ab9-ab57-fa8e2e574394)
 Original forecast (left) and corrected forecast using quantile mapping in Delft-FEWS (right) for Southeastern Australia as issued on 2022-03-18 11:00. Shown are the forecasts for lead time 2024-03-20 01:00 local time. 
 
 ## Usage in Delft-FEWS
@@ -28,3 +29,5 @@ Examples of how to configure these options in Delft-FEWS are provided in the fol
 Cannon, Alex J., Stephen R. Sobie, and Trevor Q. Murdock. ‘Bias Correction of GCM Precipitation by Quantile Mapping: How Well Do Methods Preserve Changes in Quantiles and Extremes?’, 1 September 2015. https://doi.org/10.1175/JCLI-D-14-00754.1.
 
 Gudmundsson, L., J. B. Bremnes, J. E. Haugen, and T. Engen-Skaugen. ‘Technical Note: Downscaling RCM Precipitation to the Station Scale Using Statistical Transformations &ndash; a Comparison of Methods’. Hydrology and Earth System Sciences 16, no. 9 (21 September 2012): 3383–90. https://doi.org/10.5194/hess-16-3383-2012.
+
+Ringard, Justine, Frederique Seyler, and Laurent Linguet. ‘A Quantile Mapping Bias Correction Method Based on Hydroclimatic Classification of the Guiana Shield’. Sensors 17, no. 6 (June 2017): 1413. https://doi.org/10.3390/s17061413.
