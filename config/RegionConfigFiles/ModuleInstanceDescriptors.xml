@@ -3,4 +3,7 @@
 	<moduleInstanceDescriptor id="pyRainAdjustment">
 		<updateModuleRunTimesOnCompletion>true</updateModuleRunTimesOnCompletion>
 	</moduleInstanceDescriptor>
+	<moduleInstanceDescriptor id="ExportHistoricForecastPyRainAdjustment">
+		<description>Export historic forecasts to prepare PyRainAdjustment Bias correction</description>
+	</moduleInstanceDescriptor>
 </moduleInstanceDescriptors>
