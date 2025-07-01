@@ -26,10 +26,10 @@ To not only adjust in time but also in space, we implemented **spatial adjustmen
 
 In `pyRainAdjustment`, we implemented four different interpolation schemes that can be used for this step:
 
-- Nearest neighbour  
-- Linear  
-- Inverse-distance weighting  
-- Ordinary kriging  
+- Nearest neighbour
+- Linear
+- Inverse-distance weighting
+- Ordinary kriging
 
 The adjustment method can be calculated through a **multiplicative**, **additive**, or **mixed** approach.
 
@@ -127,7 +127,7 @@ Examples of how to configure these options in Delft-FEWS are provided in the fol
 ## References
 Bronstert, A., E. Zehe, and S. Itzerott. ‘Operationelle Abfluss- Und Hochwasservorhersage in Quellgebieten - OPAQUE : Abschlussbericht ; Laufzeit Des Vorhabens: 01.06.2006 Bis 31.03.2010’, 2010. https://doi.org/10.2314/GBV:65175206X.
 
-Goudenhoofdt, E., and L. Delobbe. ‘Evaluation of Radar-Gauge Merging Methods for Quantitative Precipitation Estimates’. Hydrology and Earth System Sciences 13, no. 2 (18 February 2009): 195–203. https://doi.org/10.5194/hess-13-195-2009.  
+Goudenhoofdt, E., and L. Delobbe. ‘Evaluation of Radar-Gauge Merging Methods for Quantitative Precipitation Estimates’. Hydrology and Earth System Sciences 13, no. 2 (18 February 2009): 195–203. https://doi.org/10.5194/hess-13-195-2009.
 
 Heistermann, M., S. Jacobi, and T. Pfaff. ‘Technical Note: An Open Source Library for Processing Weather Radar Data (Wradlib)’. Hydrology and Earth System Sciences 17, no. 2 (28 February 2013): 863–71. https://doi.org/10.5194/hess-17-863-2013.
 
