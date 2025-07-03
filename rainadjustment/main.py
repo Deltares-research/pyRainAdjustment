@@ -58,7 +58,7 @@ def apply_downscaling(config_xml: dict[str, Any], work_dir: str, logger: logging
 
     # 2. Downscale the precpitation
     precip_downscaled = downscale_gridded_precip(
-        precip_orig=os.path.join(work_dir, "input", "gridded_rainfall.nc"),
+        precip_orig=os.path.join(work_dir, "ToModel", "gridded_rainfall.nc"),
         clim_file=clim_file,
         downscale_factor=config_xml["downscaling_factor"],
         logger=logger,
@@ -74,7 +74,7 @@ def apply_downscaling(config_xml: dict[str, Any], work_dir: str, logger: logging
         "complevel": 4,  # Compression level (1-9), higher means more compression
     }
     precip_downscaled.to_netcdf(
-        os.path.join(work_dir, "output", "downscaled_gridded_rainfall.nc"),
+        os.path.join(work_dir, "FromModel", "downscaled_gridded_rainfall.nc"),
         encoding={var: compression_settings for var in precip_downscaled.data_vars},
     )
     logger.info("Downscaled gridded rainfall stored to a netCDF.")
@@ -123,13 +123,13 @@ def apply_hindcasting_adjustment(
 
     # 2. Get the rain gauge information
     obs_coords, obs_names, obs_values = obtain_gauge_information(
-        gauge_folder=os.path.join(work_dir, "input"), logger=logger
+        gauge_folder=os.path.join(work_dir, "ToModel"), logger=logger
     )
     logger.info("Rain gauge information read successfully.")
 
     # 3. obtain gridded rainfall field
     grid_coords, grid_values, grid_shape = obtain_gridded_rainfall_information(
-        grid_file=os.path.join(work_dir, "input", "gridded_rainfall.nc"), logger=logger
+        grid_file=os.path.join(work_dir, "ToModel", "gridded_rainfall.nc"), logger=logger
     )
     logger.info("Gridded rainfall information read successfully.")
 
@@ -207,15 +207,15 @@ def apply_hindcasting_adjustment(
     # 6. Store both datasets in a netCDF
     store_as_netcdf(
         gridded_array=np.array(adjustment_factor_out),
-        dataset_example=xr.open_dataset(os.path.join(work_dir, "input", "gridded_rainfall.nc")),
+        dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
         variable_name="adjustment_factor",
-        outfile=os.path.join(work_dir, "output", "adjustment_factors_gridded_rainfall.nc"),
+        outfile=os.path.join(work_dir, "FromModel", "adjustment_factors_gridded_rainfall.nc"),
     )
     store_as_netcdf(
         gridded_array=np.array(adjusted_grid_out),
-        dataset_example=xr.open_dataset(os.path.join(work_dir, "input", "gridded_rainfall.nc")),
+        dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
         variable_name="P",
-        outfile=os.path.join(work_dir, "output", "adjusted_gridded_rainfall.nc"),
+        outfile=os.path.join(work_dir, "FromModel", "adjusted_gridded_rainfall.nc"),
     )
     logger.info("Adjusted gridded rainfall stored to a netCDF.")
     logger.info("Finished rain gauge adjustment. %s gauges were provided.", str(len(obs_names)))
@@ -283,7 +283,9 @@ def apply_quantile_mapping(
         # Apply the qq mapping factors
         logger.info("Requested to apply the quantile mapping factors to the current forecast")
         # Load the forecast and pre-process it
-        forecast = xr.load_dataset(os.path.join(work_dir, "input", "gridded_rainfall_forecast.nc"))
+        forecast = xr.load_dataset(
+            os.path.join(work_dir, "ToModel", "gridded_rainfall_forecast.nc")
+        )
         forecast = preprocess_netcdf_for_qmapping(forecast)
         month_int = forecast.analysis_time.dt.month.values[0]
         forecast = check_dimensions(forecast, logger=logger)
@@ -311,7 +313,7 @@ def apply_quantile_mapping(
 
         # Store it as a netCDF
         logger.info("Store the correction factors in a netCDF")
-        corrections.to_netcdf(os.path.join(work_dir, "output", "corrected_forecast.nc"))
+        corrections.to_netcdf(os.path.join(work_dir, "FromModel", "corrected_forecast.nc"))
 
 
 # ----------------------------------------------------------------------- #
@@ -364,7 +366,7 @@ def main():
             logger.exception(exception, exc_info=True)
     else:
         try:
-            config_xml = parse_run_xml("input/adjustment_settings.xml")
+            config_xml = parse_run_xml("ToModel/adjustment_settings.xml")
         except Exception as exception:
             logger.exception(exception, exc_info=True)
 

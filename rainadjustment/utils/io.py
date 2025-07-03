@@ -27,7 +27,7 @@ def obtain_gauge_information(
     ----------
     gauge_folder: str
         The folder containing all netCDFs with the rain gauge observations.
-        The rain gauge observations are expected to contain "_Gauges.nc"
+        The rain gauge observations are expected to contain "_gauges.nc"
         in their name.
     logger: logging instance
         Logger for log messages, passed on from the main.py script.
@@ -51,7 +51,7 @@ def obtain_gauge_information(
     gauges_files = os.listdir(gauge_folder)
     for gauge_file in gauges_files:
         obs_values_ = []
-        if gauge_file.endswith("_Gauges.nc"):
+        if gauge_file.endswith("_gauges.nc"):
             ds = xr.open_dataset(os.path.join(gauge_folder, gauge_file))
 
             for t in range(ds.P.shape[0]):
