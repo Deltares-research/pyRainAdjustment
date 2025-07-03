@@ -4,10 +4,10 @@
 		<description>Adjust a gridded rainfall product with the available rain gauges</description>
 		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
-		<exportDir>%ROOT_DIR%/input</exportDir>
+		<exportDir>%ROOT_DIR%/ToModel</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
 		<exportIdMap>IdDownscaling</exportIdMap>
-		<importDir>%ROOT_DIR%/output</importDir>
+		<importDir>%ROOT_DIR%/FromModel</importDir>
 		<importIdMap>IdAdjustmentFactor</importIdMap>
 		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
@@ -17,10 +17,10 @@
 	<activities>
 		<startUpActivities>
 			<purgeActivity>
-				<filter>%ROOT_DIR%/input/*</filter>
+				<filter>%ROOT_DIR%/ToModel/*</filter>
 			</purgeActivity>
 			<purgeActivity>
-				<filter>%ROOT_DIR%/output/*</filter>
+				<filter>%ROOT_DIR%/FromModel/*</filter>
 			</purgeActivity>
 			<purgeActivity>
 				<filter>%ROOT_DIR%/logs/*</filter>
@@ -31,11 +31,11 @@
 				<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 			</exportDataSetActivity>
 			<exportNetcdfActivity>
-				<exportFile>Precip_Gauges.nc</exportFile>
+				<exportFile>precip_gauges.nc</exportFile>
 				<netcdfFormat>netcdf4</netcdfFormat>
 				<timeSeriesSets>
 					<timeSeriesSet>
-					   <moduleInstanceId>$ID_METEO_INPUT$</moduleInstanceId>
+					   <moduleInstanceId>$ID_METEO_ToModel$</moduleInstanceId>
 					   <valueType>scalar</valueType>
 					   <parameterId>P_obs</parameterId>
 					   <locationSetId>sites</locationSetId>
@@ -87,7 +87,7 @@
 				<arguments>
 					<argument>main.py</argument>
 					<argument>--xml_config</argument>
-					<argument>input/adjustment_settings.xml</argument>
+					<argument>ToModel/adjustment_settings.xml</argument>
 					<argument>--requested_functionality</argument>
 					<argument>adjustment</argument>
 				</arguments>
@@ -107,7 +107,7 @@
 		</executeActivities>
 		<importActivities>
 			<importNetcdfActivity>
-				<importFile>%ROOT_DIR%/output/adjustment_factors_gridded_rainfall.nc</importFile>
+				<importFile>%ROOT_DIR%/FromModel/adjustment_factors_gridded_rainfall.nc</importFile>
 				<timeSeriesSets>
 					<timeSeriesSet>
 						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
@@ -121,7 +121,7 @@
 				</timeSeriesSets>
 			</importNetcdfActivity>
 			<importNetcdfActivity>
-				<importFile>%ROOT_DIR%/output/adjusted_gridded_rainfall.nc</importFile>
+				<importFile>%ROOT_DIR%/FromModel/adjusted_gridded_rainfall.nc</importFile>
 				<timeSeriesSets>
 					<timeSeriesSet>
 						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>

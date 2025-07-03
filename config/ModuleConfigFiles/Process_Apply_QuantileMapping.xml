@@ -4,10 +4,10 @@
 		<description>Determine the quantile mapping adjustment factors</description>
 		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
-		<exportDir>%ROOT_DIR%/input</exportDir>
+		<exportDir>%ROOT_DIR%/ToModel</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
 		<exportIdMap>IdAdjustmentFactor</exportIdMap>
-		<importDir>%ROOT_DIR%/output</importDir>
+		<importDir>%ROOT_DIR%/FromModel</importDir>
 		<importIdMap>IdAdjustmentFactor</importIdMap>
 		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
@@ -17,7 +17,7 @@
 	<activities>
 		<startUpActivities>
 			<purgeActivity>
-				<filter>%ROOT_DIR%/output/*</filter>
+				<filter>%ROOT_DIR%/FromModel/*</filter>
 			</purgeActivity>
 			<purgeActivity>
 				<filter>%ROOT_DIR%/logs/*</filter>
@@ -64,7 +64,7 @@
 				<arguments>
 					<argument>main.py</argument>
 					<argument>--xml_config</argument>
-					<argument>input/adjustment_settings.xml</argument>
+					<argument>ToModel/adjustment_settings.xml</argument>
 					<argument>--requested_functionality</argument>
 					<argument>qq_mapping</argument>
 				</arguments>

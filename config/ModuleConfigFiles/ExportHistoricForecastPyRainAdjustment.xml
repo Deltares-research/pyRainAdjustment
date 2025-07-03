@@ -3,7 +3,7 @@
 	<export>
 		<general>
 			<exportType>NETCDF-CF_GRID</exportType>
-			<folder>%REGION_HOME%/Modules/pyRainAdjustment/input/historic_forecasts</folder>
+			<folder>%REGION_HOME%/Modules/pyRainAdjustment/ToModel/historic_forecasts</folder>
 			<exportFileName>
 				<name>.nc</name>
 				<prefix>

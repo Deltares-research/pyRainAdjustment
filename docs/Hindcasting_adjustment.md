@@ -41,10 +41,10 @@ $$
 F(i,j) = \frac{G(i,j)}{P_{orig}(i,j)}
 $$
 
-Subsequently, all local values of $$F_{MFB}(i,j)$$ are interpolated back onto the original grid, and the final adjusted precipitation grid is calculated as:
+Subsequently, all local values of $$F(i,j)$$ are interpolated back onto the original grid, and the final adjusted precipitation grid is calculated as:
 
 $$
-P_{adj}(m,n) = F_{MFB}(m,n) \cdot P_{orig}(m,n)
+P_{adj}(m,n) = F(m,n) \cdot P_{orig}(m,n)
 $$
 
 where $$(m,n)$$ is the grid cell at row *m* and column *n*.
@@ -116,7 +116,7 @@ To estimate the covariance model, a **semi-variogram model** is used to determin
 - Use a standard exponential model (`1.0 * e^10,000 + 0.0`), similar to the approach in the widely-used `wradlib` Python package (Heistermann et al., 2013).
 For more information on kriging, refer to Wackernagel (2003).
 
-In **Kriging with External Drift (KED)**, a spatially correlated residual (the external drift term) is added to the ordinary kriging equation. This ensures that the estimated precipitation grid follows the structure of the external drift when interpolating the gauge values to the grid. The advantage of this approach over the aforementioned adjustment methods is that KED can be seen as a more hybrid approach in which the gauge values are the starting point and the gridded rainfall is assumed to capture the spatial patterns better, which is then used in the interpolation (kriging) step. This results in an end product that can contain values different from those found in the gauge and gridded precipitation data, with patterns that still mimic the gridded precipitation data but adjusted for the observed values measured by the gauges (see the figure below). This method is generally considered one of the best adjustment methods for gridded rainfall product (Goudenhoofdt and Delobbe, 2009), but has as disadvantage that its calculation time is longer and that it needs a high density of rain gauges that are available in real time, which generally limits the operational applicability of this method.
+In **Kriging with External Drift (KED)**, a spatially correlated residual (the external drift term) is added to the ordinary kriging equation. This ensures that the estimated precipitation grid follows the structure of the external drift when interpolating the gauge values to the grid. The advantage of this approach over the aforementioned adjustment methods is that KED can be seen as a more hybrid approach in which the gauge values are the starting point and the gridded rainfall is assumed to capture the spatial patterns better, which is then used in the interpolation (kriging) step. This results in an end product that can contain values different from those found both in the gauge and gridded precipitation data, with patterns that still mimic the gridded precipitation data but adjusted for the observed values measured by the gauges (see the figure below). This method is generally considered one of the best adjustment methods for gridded rainfall product (Goudenhoofdt and Delobbe, 2009), but has as disadvantage that its calculation time is longer and that it needs a high density of rain gauges that are available in real time, which generally limits the operational applicability of this method.
 
 ![image](https://github.com/user-attachments/assets/aa667def-87de-4bf4-9dc3-9ed01b23881c)
 Example of kriging with external drift adjustment of the ERA5 reanlaysis data over Southeastern Australia for 2024-11-28. Shown are a) the original QPE from ERA5, b) the adjustment factor and c) the adjusted ERA5 QPE.

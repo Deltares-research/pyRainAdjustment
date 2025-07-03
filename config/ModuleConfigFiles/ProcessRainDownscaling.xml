@@ -4,10 +4,10 @@
 		<description>Downscale a gridded rainfall product with a predefined downscaling factor</description>
 		<rootDir>%REGION_HOME%/Modules/pyRainAdjustment</rootDir>
 		<workDir>%ROOT_DIR%</workDir>
-		<exportDir>%ROOT_DIR%/input</exportDir>
+		<exportDir>%ROOT_DIR%/ToModel</exportDir>
 		<exportDataSetDir>%ROOT_DIR%</exportDataSetDir>
 		<exportIdMap>IdDownscaling</exportIdMap>
-		<importDir>%ROOT_DIR%/output</importDir>
+		<importDir>%ROOT_DIR%/FromModel</importDir>
 		<importIdMap>IdDownscaling</importIdMap>
 		<dumpFileDir>%REGION_HOME%/DumpFiles</dumpFileDir>
 		<dumpDir>%ROOT_DIR%</dumpDir>
@@ -16,10 +16,10 @@
 	<activities>
 		<startUpActivities>
 			<purgeActivity>
-				<filter>%ROOT_DIR%/input/*</filter>
+				<filter>%ROOT_DIR%/ToModel/*</filter>
 			</purgeActivity>
 			<purgeActivity>
-				<filter>%ROOT_DIR%/output/*</filter>
+				<filter>%ROOT_DIR%/FromModel/*</filter>
 			</purgeActivity>
 			<purgeActivity>
 				<filter>%ROOT_DIR%/logs/*</filter>
@@ -62,7 +62,7 @@
 				<arguments>
 					<argument>main.py</argument>
 					<argument>--xml_config</argument>
-					<argument>input/downscaling_settings.xml</argument>
+					<argument>ToModel/downscaling_settings.xml</argument>
 					<argument>--requested_functionality</argument>
 					<argument>downscaling</argument>
 				</arguments>
@@ -82,7 +82,7 @@
 		</executeActivities>
 		<importActivities>
 			<importNetcdfActivity>
-				<importFile>%ROOT_DIR%/output/downscaled_gridded_rainfall.nc</importFile>
+				<importFile>%ROOT_DIR%/FromModel/downscaled_gridded_rainfall.nc</importFile>
 				<timeSeriesSets>
 					<timeSeriesSet>
 						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>

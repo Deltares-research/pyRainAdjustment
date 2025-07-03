@@ -9,7 +9,7 @@ For contributions to the Python code in this folder, we try to stick to the foll
 - Main variable of gridded precipitation: default is `P`, but if the dataset has only variable, this is flexible in the code. 
 
 ## Variable names:
-- We use snake case for variable names, e.g. `precip_gridded`.
+- We use snake case for variable names, e.g. `precip_gridded` for the gridded precipitation, `precip_gauges` for the rain gauge observations and `gridded_rainfall_forecast` for the gridded rainfall forecast.
 - Try to make the variable names intuitive, so `precip` or instead of `p`, etc.
 
 ## Path names:
