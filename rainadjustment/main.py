@@ -8,12 +8,14 @@ hindcasting adjustment procedure or the quantile mapping procedure.
 import argparse
 import logging
 import os
+import sys
 import time
 from typing import Any
 
 import numpy as np
 import xarray as xr
 
+sys.path.append(os.getcwd())
 from functions.adjusters import apply_adjustment, check_adjustment_factor
 from functions.climatology_preprocessor import get_climatology_dataset
 from functions.downscaling import downscale_gridded_precip
