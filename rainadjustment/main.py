@@ -147,11 +147,12 @@ def apply_hindcasting_adjustment(
         )
 
     # 4. perform correction
-    adjustment_factor_out = []
+    multiplicative_error_out = []
+    additive_error_out = []
     adjusted_grid_out = []
 
     for t in range(grid_values.shape[0]):
-        adjusted_values = apply_adjustment(
+        adjusted_values, multiplicative_error, additive_error = apply_adjustment(
             config_xml=config_xml,
             obs_coords=obs_coords,
             obs_values=obs_values[t],
@@ -182,41 +183,52 @@ def apply_hindcasting_adjustment(
                 str(t + 1),
                 str(grid_values.shape[0]),
             )
-            # Also ensure that the correction values have not been too high.
-            adjusted_values_checked = check_adjustment_factor(
-                adjusted_values=adjusted_values,
-                original_values=grid_values[t],
-                max_change_factor=config_xml["max_change_factor"],
-            )
-            if np.array_equal(adjusted_values_checked, adjusted_values) is False:
-                logger.warning(
-                    "Some of the adjusted values were above the set maximum adjustment factor."
+            if multiplicative_error is None and additive_error is None:
+                # Also ensure that the correction values have not been too high.
+                adjusted_values_checked = check_adjustment_factor(
+                    adjusted_values=adjusted_values,
+                    original_values=grid_values[t],
+                    max_change_factor=config_xml["max_change_factor"],
                 )
+                if np.array_equal(adjusted_values_checked, adjusted_values) is False:
+                    logger.warning(
+                        "Some of the adjusted values were above the set maximum adjustment factor."
+                    )
+            else:
+                adjusted_values_checked = adjusted_values.copy()
 
         # 5. Get the adjustment factor
-        adjustment_factor = adjusted_values_checked / grid_values[t]
-        # Make sure there are no negative numbers and no nans in the adjustment
-        adjusted_values_checked = np.where(
-            adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
-        )
-        adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
-        adjustment_factor = np.nan_to_num(adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0)
+        if multiplicative_error is None and additive_error is None:
+            multiplicative_error = adjusted_values_checked / grid_values[t]
+            # Make sure there are no negative numbers and no nans in the adjustment
+            adjusted_values_checked = np.where(
+                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
+            )
+            multiplicative_error = np.where(multiplicative_error < 0.0, 1.0, multiplicative_error)
+        multiplicative_error = np.nan_to_num(multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0)
+
+        if additive_error is None:
+            additive_error = multiplicative_error * np.nan
+        else:
+            additive_error = np.nan_to_num(additive_error, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Reshape and store as a variable
-        adjustment_factor_out.append(np.reshape(adjustment_factor, grid_shape))
+        multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
+        additive_error_out.append(np.reshape(additive_error, grid_shape))
         adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
     # 6. Store both datasets in a netCDF
     store_as_netcdf(
-        gridded_array=np.array(adjustment_factor_out),
+        gridded_arrays={
+            "multiplier": np.array(multiplicative_error_out),
+            "additive": np.array(additive_error_out),
+        },
         dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
-        variable_name="adjustment_factor",
         outfile=os.path.join(work_dir, "FromModel", "adjustment_factors_gridded_rainfall.nc"),
     )
     store_as_netcdf(
-        gridded_array=np.array(adjusted_grid_out),
+        gridded_arrays={"P": np.array(adjusted_grid_out)},
         dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
-        variable_name="P",
         outfile=os.path.join(work_dir, "FromModel", "adjusted_gridded_rainfall.nc"),
     )
     logger.info("Adjusted gridded rainfall stored to a netCDF.")
@@ -309,7 +321,7 @@ def apply_quantile_mapping(
 
         # Post-process the correction factors
         corrections = corrections.to_dataset(dim="variable")
-        corrections = corrections.rename({0: "adjustment_factor", 1: "P"})
+        corrections = corrections.rename({0: "multiplier", 1: "P"})
         corrections = corrections.swap_dims({"step": "valid_time"})
         corrections = corrections.rename({"valid_time": "time"})
 

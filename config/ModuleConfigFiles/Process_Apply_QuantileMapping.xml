@@ -98,7 +98,7 @@
 					<timeSeriesSet>
 						<moduleInstanceId>$MODULEINSTANCE_ID$</moduleInstanceId>
 						<valueType>grid</valueType>
-						<parameterId>F_calc</parameterId>
+						<parameterId>F_multiplier</parameterId>
 						<locationId>$LOCATION_ID$</locationId>
 						<timeSeriesType>simulated forecasting</timeSeriesType>
 						<timeStep unit="hour" multiplier="1" timeZone="GMT"/>
