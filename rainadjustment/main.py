@@ -172,7 +172,8 @@ def apply_hindcasting_adjustment(
                 grid_values=grid_values[t],
                 logger=logger,
             )
-            additive_error_background = multiplicative_error_background * 0.0
+            if multiplicative_error_background is not None:
+                additive_error_background = multiplicative_error_background * 0.0
 
         logger.info("Now, run the actual adjustment")
         adjusted_values, multiplicative_error, additive_error = apply_adjustment(
