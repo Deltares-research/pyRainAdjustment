@@ -185,7 +185,7 @@ def apply_hindcasting_adjustment(
         )
 
         # A final check to ensure that the adjustment has taken place.
-        if not np.array_equal(adjusted_values, grid_values[t]):
+        if np.array_equal(adjusted_values, grid_values[t], equal_nan=True) is False:
             logger.info(
                 "Adjustment for time step %s out of %s has taken place successfully.",
                 str(t + 1),
@@ -198,7 +198,10 @@ def apply_hindcasting_adjustment(
                     original_values=grid_values[t],
                     max_change_factor=config_xml["max_change_factor"],
                 )
-                if np.array_equal(adjusted_values_checked, adjusted_values) is False:
+                if (
+                    np.array_equal(adjusted_values_checked, adjusted_values, equal_nan=True)
+                    is False
+                ):
                     logger.warning(
                         "Some of the adjusted values were above the set maximum adjustment factor."
                     )
@@ -232,7 +235,7 @@ def apply_hindcasting_adjustment(
             if (
                 config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
                 and config_xml["smooth_edge_values_range"] is not None
-                and not np.array_equal(adjusted_values, grid_values[t])
+                and np.array_equal(adjusted_values, grid_values[t], equal_nan=True) is False
             ):
                 multiplicative_error_out.append(
                     apply_smooth_dilated_mask(
