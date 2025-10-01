@@ -24,6 +24,7 @@ from functions.qq_mapping import (
     preprocess_netcdf_for_qmapping,
     qmapping_correction_factors,
 )
+from utils.binary_dilution import apply_smooth_dilated_mask
 from utils.io import (
     check_dimensions,
     obtain_gauge_information,
@@ -152,6 +153,28 @@ def apply_hindcasting_adjustment(
     adjusted_grid_out = []
 
     for t in range(grid_values.shape[0]):
+        if (
+            config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
+            and config_xml["smooth_edge_values_range"] is not None
+        ):
+            config_xml_temp = config_xml.copy()
+            config_xml_temp["adjustment_method"] = "MFB"
+            logger.info("First, running an MFB correction procedure to produce a background grid")
+            (
+                adjusted_values_background,
+                multiplicative_error_background,
+                additive_error_background,
+            ) = apply_adjustment(
+                config_xml=config_xml_temp,
+                obs_coords=obs_coords,
+                obs_values=obs_values[t],
+                grid_coords=grid_coords,
+                grid_values=grid_values[t],
+                logger=logger,
+            )
+            additive_error_background = multiplicative_error_background * 0.0
+
+        logger.info("Now, run the actual adjustment")
         adjusted_values, multiplicative_error, additive_error = apply_adjustment(
             config_xml=config_xml,
             obs_coords=obs_coords,
@@ -177,6 +200,9 @@ def apply_hindcasting_adjustment(
                     str(grid_values.shape[0]),
                 )
                 adjusted_values_checked = adjusted_values * np.nan
+                multiplicative_error = adjusted_values * np.nan
+                additive_error = adjusted_values * np.nan
+
         else:
             logger.info(
                 "Adjustment for time step %s out of %s has taken place successfully.",
@@ -197,25 +223,59 @@ def apply_hindcasting_adjustment(
             else:
                 adjusted_values_checked = adjusted_values.copy()
 
-        # 5. Get the adjustment factor
+        # 5. Post-process the adjustment factor or obtain it if we don't have it yet
         if multiplicative_error is None and additive_error is None:
             multiplicative_error = adjusted_values_checked / grid_values[t]
-            # Make sure there are no negative numbers and no nans in the adjustment
-            adjusted_values_checked = np.where(
-                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
-            )
-            multiplicative_error = np.where(multiplicative_error < 0.0, 1.0, multiplicative_error)
-        multiplicative_error = np.nan_to_num(multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0)
-
-        if additive_error is None:
             additive_error = multiplicative_error * np.nan
-        else:
+            # Make sure there are no negative numbers and no nans in the adjustment
+            multiplicative_error = np.where(multiplicative_error < 0.0, 1.0, multiplicative_error)
+        elif multiplicative_error is None and additive_error is not None:
+            multiplicative_error = additive_error * np.nan
+        elif multiplicative_error is not None and additive_error is None:
+            additive_error = multiplicative_error * np.nan
+
+        # Some final checks, but keep nans if everything is nan
+        adjusted_values_checked = np.where(
+            adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
+        )
+        if np.isfinite(grid_values).any():
+            multiplicative_error = np.nan_to_num(
+                multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0
+            )
             additive_error = np.nan_to_num(additive_error, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Reshape and store as a variable
-        multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
-        additive_error_out.append(np.reshape(additive_error, grid_shape))
-        adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
+        if (
+            config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
+            and config_xml["smooth_edge_values_range"] is not None
+            and np.isfinite(grid_values).any()
+        ):
+            multiplicative_error_out.append(
+                apply_smooth_dilated_mask(
+                    config_xml=config_xml,
+                    input_array=np.reshape(multiplicative_error, grid_shape),
+                    background_array=np.reshape(multiplicative_error_background, grid_shape),
+                )
+            )
+            multiplicative_error_out.append(
+                apply_smooth_dilated_mask(
+                    config_xml=config_xml,
+                    input_array=np.reshape(additive_error, grid_shape),
+                    background_array=np.reshape(additive_error_background, grid_shape),
+                )
+            )
+            multiplicative_error_out.append(
+                apply_smooth_dilated_mask(
+                    config_xml=config_xml,
+                    input_array=np.reshape(adjusted_values_checked, grid_shape),
+                    background_array=np.reshape(adjusted_values_background, grid_shape),
+                )
+            )
+
+        else:
+            multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
+            additive_error_out.append(np.reshape(additive_error, grid_shape))
+            adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
     # 6. Store both datasets in a netCDF
     store_as_netcdf(
