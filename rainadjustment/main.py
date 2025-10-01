@@ -185,25 +185,7 @@ def apply_hindcasting_adjustment(
         )
 
         # A final check to ensure that the adjustment has taken place.
-        if np.array_equal(adjusted_values, grid_values[t]):
-            if np.isfinite(grid_values).any():
-                logger.info(
-                    "Adjustment for time step %s out of %s has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step.",
-                    str(t + 1),
-                    str(grid_values.shape[0]),
-                )
-                adjusted_values_checked = adjusted_values.copy()
-            else:
-                logger.warning(
-                    "Adjustment for time step %s out of %s has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step.",
-                    str(t + 1),
-                    str(grid_values.shape[0]),
-                )
-                adjusted_values_checked = adjusted_values * np.nan
-                multiplicative_error = adjusted_values * np.nan
-                additive_error = adjusted_values * np.nan
-
-        else:
+        if not np.array_equal(adjusted_values, grid_values[t]):
             logger.info(
                 "Adjustment for time step %s out of %s has taken place successfully.",
                 str(t + 1),
@@ -223,61 +205,91 @@ def apply_hindcasting_adjustment(
             else:
                 adjusted_values_checked = adjusted_values.copy()
 
-        # 5. Post-process the adjustment factor or obtain it if we don't have it yet
-        if multiplicative_error is None and additive_error is None:
-            multiplicative_error = adjusted_values_checked / grid_values[t]
-            additive_error = multiplicative_error * np.nan
-            # Make sure there are no negative numbers and no nans in the adjustment
-            multiplicative_error = np.where(multiplicative_error < 0.0, 1.0, multiplicative_error)
-        elif multiplicative_error is None and additive_error is not None:
-            multiplicative_error = additive_error * np.nan
-        elif multiplicative_error is not None and additive_error is None:
-            additive_error = multiplicative_error * np.nan
+            # 5. Post-process the adjustment factor or obtain it if we don't have it yet
+            if multiplicative_error is None and additive_error is None:
+                multiplicative_error = adjusted_values_checked / grid_values[t]
+                additive_error = multiplicative_error * np.nan
+                # Make sure there are no negative numbers and no nans in the adjustment
+                multiplicative_error = np.where(
+                    multiplicative_error < 0.0, 1.0, multiplicative_error
+                )
+            elif multiplicative_error is None and additive_error is not None:
+                multiplicative_error = additive_error * np.nan
+            elif multiplicative_error is not None and additive_error is None:
+                additive_error = multiplicative_error * np.nan
 
-        # Some final checks, but keep nans if everything is nan
-        adjusted_values_checked = np.where(
-            adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
-        )
-        if np.isfinite(grid_values).any():
-            multiplicative_error = np.nan_to_num(
-                multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0
+            # Some final checks, but keep nans if everything is nan
+            adjusted_values_checked = np.where(
+                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
             )
-            additive_error = np.nan_to_num(additive_error, nan=0.0, posinf=0.0, neginf=0.0)
+            if np.isfinite(grid_values).any():
+                multiplicative_error = np.nan_to_num(
+                    multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0
+                )
+                additive_error = np.nan_to_num(additive_error, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Reshape and store as a variable
-        if (
-            config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
-            and config_xml["smooth_edge_values_range"] is not None
-            and np.isfinite(grid_values).any()
-        ):
-            multiplicative_error_out.append(
-                apply_smooth_dilated_mask(
-                    config_xml=config_xml,
-                    input_array=np.reshape(multiplicative_error, grid_shape),
-                    background_array=np.reshape(multiplicative_error_background, grid_shape),
+            # Reshape and store as a variable
+            if (
+                config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
+                and config_xml["smooth_edge_values_range"] is not None
+                and not np.array_equal(adjusted_values, grid_values[t])
+            ):
+                multiplicative_error_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(multiplicative_error, grid_shape),
+                        background_array=np.reshape(multiplicative_error_background, grid_shape),
+                    )
                 )
-            )
-            multiplicative_error_out.append(
-                apply_smooth_dilated_mask(
-                    config_xml=config_xml,
-                    input_array=np.reshape(additive_error, grid_shape),
-                    background_array=np.reshape(additive_error_background, grid_shape),
+                multiplicative_error_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(additive_error, grid_shape),
+                        background_array=np.reshape(additive_error_background, grid_shape),
+                    )
                 )
-            )
-            multiplicative_error_out.append(
-                apply_smooth_dilated_mask(
-                    config_xml=config_xml,
-                    input_array=np.reshape(adjusted_values_checked, grid_shape),
-                    background_array=np.reshape(adjusted_values_background, grid_shape),
+                multiplicative_error_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(adjusted_values_checked, grid_shape),
+                        background_array=np.reshape(adjusted_values_background, grid_shape),
+                    )
                 )
-            )
+
+            else:
+                multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
+                additive_error_out.append(np.reshape(additive_error, grid_shape))
+                adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
         else:
+            if np.isfinite(grid_values[t]).any():
+                logger.info(
+                    "Adjustment for time step %s out of %s has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step.",
+                    str(t + 1),
+                    str(grid_values.shape[0]),
+                )
+                adjusted_values_checked = adjusted_values.copy()
+                multiplicative_error = adjusted_values * np.nan
+                additive_error = adjusted_values * np.nan
+            else:
+                logger.warning(
+                    "Adjustment for time step %s out of %s has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step.",
+                    str(t + 1),
+                    str(grid_values.shape[0]),
+                )
+                adjusted_values_checked = adjusted_values * np.nan
+                multiplicative_error = adjusted_values * np.nan
+                additive_error = adjusted_values * np.nan
+
+            adjusted_values_checked = np.where(
+                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
+            )
+
             multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
             additive_error_out.append(np.reshape(additive_error, grid_shape))
             adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
-    # 6. Store both datasets in a netCDF
+    # 6. Store the datasets in a netCDF
     store_as_netcdf(
         gridded_arrays={
             "multiplier": np.array(multiplicative_error_out),
