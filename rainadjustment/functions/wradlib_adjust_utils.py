@@ -249,6 +249,9 @@ class AdjustBase(ipol.IpolBase):
         # ((needed for AdjustAdd, AdjustMultiply, AdjustMixed)
         self.ipclass = ipclass
         self.ipargs = ipargs
+        if "nnearest" not in self.ipargs:
+            self.ipargs["nnearest"] = 10
+
         # create a default instance of interpolator
         self.ip = ipclass(src=self.obs_coords, trg=self.raw_coords, **ipargs)
 
@@ -343,11 +346,24 @@ class AdjustBase(ipol.IpolBase):
         self._check_shape(obs, raw)
         # radar values at gage locations
         rawatobs = self.get_raw_at_obs(raw, obs)
-        # check where both gage and radar observations are valid
+        # Check where both gage and radar observations are valid
+        # Add a check to ensure that if one of the two is valid, the
+        # other is set to self.minval
+        valid_obs_mask = obs > self.minval
+        valid_rawatobs_mask = rawatobs > self.minval
+
+        # If obs has valid values and rawatobs doesn't at those positions, fill rawatobs
+        rawatobs[valid_obs_mask & ~valid_rawatobs_mask] = self.minval
+
+        # If rawatobs has valid values and obs doesn't at those positions, fill obs
+        obs[valid_rawatobs_mask & ~valid_obs_mask] = self.minval
+
+        # Now get valid indices from both
         ix = np.intersect1d(
             util._idvalid(obs, minval=self.minval),
             util._idvalid(rawatobs, minval=self.minval),
         )
+
         return rawatobs, ix
 
     def xvalidate(self, obs, raw):
@@ -458,12 +474,19 @@ class AdjustAdd(AdjustBase):
         ip = self._checkip(ix, targets)
 
         # -----------------THIS IS THE ACTUAL ADJUSTMENT APPROACH--------------
+        # First fill rawatobs and obs where one is above the threshold and the
+        # others is not with the self.minval value.
+        rawatobs[ix] = np.where(rawatobs[ix] < self.minval, self.minval, rawatobs[ix])
+        obs[ix] = np.where(obs[ix] < self.minval, self.minval, obs[ix])
         # The error is a difference
         error = obs[ix] - rawatobs[ix]
         # interpolate the error field
         iperror = ip(error)
         # add error field to raw and make sure no negatives occur
-        return np.where((raw + iperror) < 0.0, 0.0, raw + iperror), None, iperror
+        adjusted_precip = np.clip(raw + iperror, 0.0, None)
+        adjusted_precip[raw <= 0.0] = 0.0
+
+        return adjusted_precip, None, iperror
 
 
 class AdjustMultiply(AdjustBase):
@@ -520,6 +543,10 @@ class AdjustMultiply(AdjustBase):
         ip = self._checkip(ix, targets)
 
         # -----------------THIS IS THE ACTUAL ADJUSTMENT APPROACH--------------
+        # First fill rawatobs and obs where one is above the threshold and the
+        # others is not with the self.minval value.
+        rawatobs[ix] = np.where(rawatobs[ix] < self.minval, self.minval, rawatobs[ix])
+        obs[ix] = np.where(obs[ix] < self.minval, self.minval, obs[ix])
         # computing the error
         error = obs[ix] / rawatobs[ix]
         # interpolate error field
@@ -608,16 +635,27 @@ class AdjustMixed(AdjustBase):
         ip = self._checkip(ix, targets)
 
         # -----------------THIS IS THE ACTUAL ADJUSTMENT APPROACH--------------
+        # First fill rawatobs and obs where one is above the threshold and the
+        # others is not with the self.minval value.
+        rawatobs[ix] = np.where(rawatobs[ix] < self.minval, self.minval, rawatobs[ix])
+        obs[ix] = np.where(obs[ix] < self.minval, self.minval, obs[ix])
         # computing epsilon and delta from the least squares
         epsilon = (obs[ix] - rawatobs[ix]) / (rawatobs[ix] ** 2 + 1.0)
+        # Determine the delta
         delta = (obs[ix] - epsilon) / rawatobs[ix]
         # interpolate error fields
         ipepsilon = ip(epsilon)
         ipdelta = ip(delta)
         # Make sure iperror is not larger than the max_change_factor
         ipdelta = np.clip(ipdelta, 1.0 / self.max_change_factor, self.max_change_factor)
+        # Make sure ipepsilon is not larger than the max_change_factor
+        ipepsilon = np.clip(ipepsilon, -self.max_change_factor, self.max_change_factor)
+        # Compute the adjusted_precip
+        adjusted_precip = ipdelta * raw + ipepsilon
+        adjusted_precip[raw <= 0.0] = 0.0
+
         # compute adjusted radar rainfall field
-        return ipdelta * raw + ipepsilon, ipdelta, ipepsilon
+        return adjusted_precip, ipdelta, ipepsilon
 
 
 class AdjustMFB(AdjustBase):
@@ -664,6 +702,10 @@ class AdjustMFB(AdjustBase):
         # ip = self._checkip(ix, targets)
 
         # -----------------THIS IS THE ACTUAL ADJUSTMENT APPROACH--------------
+        # First fill rawatobs and obs where one is above the threshold and the
+        # others is not with the self.minval value.
+        rawatobs[ix] = np.where(rawatobs[ix] < self.minval, self.minval, rawatobs[ix])
+        obs[ix] = np.where(obs[ix] < self.minval, self.minval, obs[ix])
         # compute ratios for each valid observation point
         ratios = np.ma.masked_invalid(obs[ix] / rawatobs.ravel()[ix])
         if len(np.where(np.logical_not(ratios.mask))[0]) < self.mingages:

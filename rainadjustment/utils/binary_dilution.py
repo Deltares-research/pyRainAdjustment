@@ -50,7 +50,7 @@ def apply_smooth_dilated_mask(
     # Compute the smooth dilated mask
     new_mask = __compute_smooth_dilated_mask(
         nan_indices,
-        max_padding_size_in_px=20,
+        max_padding_size_in_px=smoothing_distance,
     )
 
     # Ensure mask values are between 0 and 1

@@ -173,7 +173,7 @@ def apply_hindcasting_adjustment(
                 logger=logger,
             )
             if multiplicative_error_background is not None:
-                additive_error_background = multiplicative_error_background * 0.0
+                additive_error_background = np.zeros_like(multiplicative_error_background)
 
         logger.info("Now, run the actual adjustment")
         adjusted_values, multiplicative_error, additive_error = apply_adjustment(
@@ -245,14 +245,14 @@ def apply_hindcasting_adjustment(
                         background_array=np.reshape(multiplicative_error_background, grid_shape),
                     )
                 )
-                multiplicative_error_out.append(
+                additive_error_out.append(
                     apply_smooth_dilated_mask(
                         config_xml=config_xml,
                         input_array=np.reshape(additive_error, grid_shape),
                         background_array=np.reshape(additive_error_background, grid_shape),
                     )
                 )
-                multiplicative_error_out.append(
+                adjusted_grid_out.append(
                     apply_smooth_dilated_mask(
                         config_xml=config_xml,
                         input_array=np.reshape(adjusted_values_checked, grid_shape),
