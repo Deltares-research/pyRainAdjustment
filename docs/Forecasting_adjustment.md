@@ -25,6 +25,8 @@ Original forecast (left) and corrected forecast using quantile mapping in Delft-
 ## Usage in Delft-FEWS
 Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md). For quantile mapping, have a look at [/config/ModuleConfigFiles/Process_Determine_QuantileMapping.xml](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/ModuleConfigFiles/Process_Determine_QuantileMapping.xml) and [/config/ModuleConfigFiles/Process_Apply_QuantileMapping.xml](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/ModuleConfigFiles/Process_Apply_QuantileMapping.xml). The different adjustment methods can be provided to the Delft-FEWS model adapter (General Adapter) by providing the property key `adjustment_method`, which can be one of the following methods: `MFB`, `additive`, `multiplicative`, `mixed`, `KED` and `quantile_mapping`.
 
+The output of the hindcasting adjusmtent procedure is one netCDF file, which is placed in the `FromModel` folder and can be directly read by Delft-FEWS. This netCDF (`corrected_forecast.nc`) contains the `multiplier` adjustment variable and the adjusted rainfall field variable (`P`). 
+
 ## References
 Cannon, Alex J., Stephen R. Sobie, and Trevor Q. Murdock. ‘Bias Correction of GCM Precipitation by Quantile Mapping: How Well Do Methods Preserve Changes in Quantiles and Extremes?’, 1 September 2015. https://doi.org/10.1175/JCLI-D-14-00754.1.
 
