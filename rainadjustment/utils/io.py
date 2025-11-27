@@ -169,9 +169,8 @@ def obtain_gridded_rainfall_information(
 
 
 def store_as_netcdf(
-    gridded_array: npt.NDArray[np.float64],
+    gridded_arrays: dict[str, npt.NDArray[np.float64]],
     dataset_example: xr.Dataset,
-    variable_name: str,
     outfile: str,
 ) -> None:
     """
@@ -179,14 +178,12 @@ def store_as_netcdf(
 
     Parameters
     ----------
-        gridded_array: ndarray
-            3D array (time, y ,x) containing the adjustment factors on the
-            original gridded rainfall product grid.
+        gridded_arrays: dict
+            Dictionary containing 3D arrays (time, y ,x) containing the adjustment
+            factors on the original gridded rainfall product grid.
         dataset_example: xr DataSet
             The original gridded rainfall xr DataSet which will
             form the blue print for the output dataset.
-        variable_name: str
-            The name of the variable that should be saved.
         outfile: str
             The output file location.
 
@@ -194,14 +191,12 @@ def store_as_netcdf(
     -------
     None
     """
-    # Make a dataset out of the array
+
+    # Create dataset with all variables
+    data_vars = {name: (("time", "y", "x"), array) for name, array in gridded_arrays.items()}
+
     output_dataset = xr.Dataset(
-        {
-            f"{variable_name}": (
-                ("time", "y", "x"),
-                gridded_array,
-            )
-        },
+        data_vars,
         coords={
             "time": dataset_example["time"].values,
             "y": dataset_example["y"].values,
@@ -243,13 +238,14 @@ def store_as_netcdf(
     )
 
     # Add attributes to data variables
-    output_dataset[f"{variable_name}"].attrs.update(
-        {
-            "long_name": f"{variable_name}",
-            "standard_name": f"{variable_name}",
-            "units": "-",
-        }
-    )
+    for name in gridded_arrays.keys():
+        output_dataset[name].attrs.update(
+            {
+                "long_name": name,
+                "standard_name": name,
+                "units": "-",
+            }
+        )
 
     # Saving reprojected data
     output_dataset.to_netcdf(outfile)

@@ -65,6 +65,11 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         The interpolation method that should be used. An interpolation method
         from https://docs.wradlib.org/en/latest/ipol.html should be provided.
         Defaults to Idw (inverse distance weighting).
+    smooth_edge_values_range: int
+        The distance in grid cells from the edge of the domain that will be
+        used smooth the spatial adjustment factors from the center of the domain
+        to the MFB factors on the edge of the domain (a spatial dilution will
+        be used for this).
     clim_filepath: str
         The filepath to the monthly climatology netCDF file.
     qq_filepath: str
@@ -104,6 +109,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
     adjustment_method = None
     statistical_function = "median"
     interpolation_method = "Idw"
+    smooth_edge_values_range = None
     clim_filepath = None
     qq_filepath = None
     variogram_model = "standard"
@@ -123,6 +129,7 @@ def parse_run_xml(xml_file: str) -> dict[str, Any]:
         "adjustment_method": adjustment_method,
         "statistical_function": statistical_function,
         "interpolation_method": interpolation_method,
+        "smooth_edge_values_range": smooth_edge_values_range,
         "clim_filepath": clim_filepath,
         "qq_filepath": qq_filepath,
         "variogram_model": variogram_model,

@@ -8,12 +8,14 @@ hindcasting adjustment procedure or the quantile mapping procedure.
 import argparse
 import logging
 import os
+import sys
 import time
 from typing import Any
 
 import numpy as np
 import xarray as xr
 
+sys.path.append(os.getcwd())
 from functions.adjusters import apply_adjustment, check_adjustment_factor
 from functions.climatology_preprocessor import get_climatology_dataset
 from functions.downscaling import downscale_gridded_precip
@@ -22,6 +24,7 @@ from functions.qq_mapping import (
     preprocess_netcdf_for_qmapping,
     qmapping_correction_factors,
 )
+from utils.binary_dilution import apply_smooth_dilated_mask
 from utils.io import (
     check_dimensions,
     obtain_gauge_information,
@@ -145,11 +148,35 @@ def apply_hindcasting_adjustment(
         )
 
     # 4. perform correction
-    adjustment_factor_out = []
+    multiplicative_error_out = []
+    additive_error_out = []
     adjusted_grid_out = []
 
     for t in range(grid_values.shape[0]):
-        adjusted_values = apply_adjustment(
+        if (
+            config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
+            and config_xml["smooth_edge_values_range"] is not None
+        ):
+            config_xml_temp = config_xml.copy()
+            config_xml_temp["adjustment_method"] = "MFB"
+            logger.info("First, running an MFB correction procedure to produce a background grid")
+            (
+                adjusted_values_background,
+                multiplicative_error_background,
+                additive_error_background,
+            ) = apply_adjustment(
+                config_xml=config_xml_temp,
+                obs_coords=obs_coords,
+                obs_values=obs_values[t],
+                grid_coords=grid_coords,
+                grid_values=grid_values[t],
+                logger=logger,
+            )
+            if multiplicative_error_background is not None:
+                additive_error_background = np.zeros_like(multiplicative_error_background)
+
+        logger.info("Now, run the actual adjustment")
+        adjusted_values, multiplicative_error, additive_error = apply_adjustment(
             config_xml=config_xml,
             obs_coords=obs_coords,
             obs_values=obs_values[t],
@@ -159,14 +186,95 @@ def apply_hindcasting_adjustment(
         )
 
         # A final check to ensure that the adjustment has taken place.
-        if np.array_equal(adjusted_values, grid_values[t]):
+        if np.array_equal(adjusted_values, grid_values[t], equal_nan=True) is False:
+            logger.info(
+                "Adjustment for time step %s out of %s has taken place successfully.",
+                str(t + 1),
+                str(grid_values.shape[0]),
+            )
+            if multiplicative_error is None and additive_error is None:
+                # Also ensure that the correction values have not been too high.
+                adjusted_values_checked = check_adjustment_factor(
+                    adjusted_values=adjusted_values,
+                    original_values=grid_values[t],
+                    max_change_factor=config_xml["max_change_factor"],
+                )
+                if (
+                    np.array_equal(adjusted_values_checked, adjusted_values, equal_nan=True)
+                    is False
+                ):
+                    logger.warning(
+                        "Some of the adjusted values were above the set maximum adjustment factor."
+                    )
+            else:
+                adjusted_values_checked = adjusted_values.copy()
+
+            # 5. Post-process the adjustment factor or obtain it if we don't have it yet
+            if multiplicative_error is None and additive_error is None:
+                multiplicative_error = adjusted_values_checked / grid_values[t]
+                additive_error = multiplicative_error * np.nan
+                # Make sure there are no negative numbers and no nans in the adjustment
+                multiplicative_error = np.where(
+                    multiplicative_error < 0.0, 1.0, multiplicative_error
+                )
+            elif multiplicative_error is None and additive_error is not None:
+                multiplicative_error = additive_error * np.nan
+            elif multiplicative_error is not None and additive_error is None:
+                additive_error = multiplicative_error * np.nan
+
+            # Some final checks, but keep nans if everything is nan
+            adjusted_values_checked = np.where(
+                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
+            )
             if np.isfinite(grid_values).any():
+                multiplicative_error = np.nan_to_num(
+                    multiplicative_error, nan=1.0, posinf=1.0, neginf=1.0
+                )
+                additive_error = np.nan_to_num(additive_error, nan=0.0, posinf=0.0, neginf=0.0)
+
+            # Reshape and store as a variable
+            if (
+                config_xml["adjustment_method"] in ["Additive", "Multiplicative", "Mixed"]
+                and config_xml["smooth_edge_values_range"] is not None
+                and np.array_equal(adjusted_values, grid_values[t], equal_nan=True) is False
+            ):
+                multiplicative_error_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(multiplicative_error, grid_shape),
+                        background_array=np.reshape(multiplicative_error_background, grid_shape),
+                    )
+                )
+                additive_error_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(additive_error, grid_shape),
+                        background_array=np.reshape(additive_error_background, grid_shape),
+                    )
+                )
+                adjusted_grid_out.append(
+                    apply_smooth_dilated_mask(
+                        config_xml=config_xml,
+                        input_array=np.reshape(adjusted_values_checked, grid_shape),
+                        background_array=np.reshape(adjusted_values_background, grid_shape),
+                    )
+                )
+
+            else:
+                multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
+                additive_error_out.append(np.reshape(additive_error, grid_shape))
+                adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
+
+        else:
+            if np.isfinite(grid_values[t]).any():
                 logger.info(
                     "Adjustment for time step %s out of %s has not taken place. There were too few valid gauge-grid pairs. The original grid values will be returned for this time step.",
                     str(t + 1),
                     str(grid_values.shape[0]),
                 )
                 adjusted_values_checked = adjusted_values.copy()
+                multiplicative_error = adjusted_values * np.nan
+                additive_error = adjusted_values * np.nan
             else:
                 logger.warning(
                     "Adjustment for time step %s out of %s has not taken place. The gridded rainfall only contains nans. The original grid values will be returned for this time step.",
@@ -174,47 +282,29 @@ def apply_hindcasting_adjustment(
                     str(grid_values.shape[0]),
                 )
                 adjusted_values_checked = adjusted_values * np.nan
-        else:
-            logger.info(
-                "Adjustment for time step %s out of %s has taken place successfully.",
-                str(t + 1),
-                str(grid_values.shape[0]),
+                multiplicative_error = adjusted_values * np.nan
+                additive_error = adjusted_values * np.nan
+
+            adjusted_values_checked = np.where(
+                adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
             )
-            # Also ensure that the correction values have not been too high.
-            adjusted_values_checked = check_adjustment_factor(
-                adjusted_values=adjusted_values,
-                original_values=grid_values[t],
-                max_change_factor=config_xml["max_change_factor"],
-            )
-            if np.array_equal(adjusted_values_checked, adjusted_values) is False:
-                logger.warning(
-                    "Some of the adjusted values were above the set maximum adjustment factor."
-                )
 
-        # 5. Get the adjustment factor
-        adjustment_factor = adjusted_values_checked / grid_values[t]
-        # Make sure there are no negative numbers and no nans in the adjustment
-        adjusted_values_checked = np.where(
-            adjusted_values_checked < 0.0, 0.0, adjusted_values_checked
-        )
-        adjustment_factor = np.where(adjustment_factor < 0.0, 1.0, adjustment_factor)
-        adjustment_factor = np.nan_to_num(adjustment_factor, nan=1.0, posinf=1.0, neginf=1.0)
+            multiplicative_error_out.append(np.reshape(multiplicative_error, grid_shape))
+            additive_error_out.append(np.reshape(additive_error, grid_shape))
+            adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
 
-        # Reshape and store as a variable
-        adjustment_factor_out.append(np.reshape(adjustment_factor, grid_shape))
-        adjusted_grid_out.append(np.reshape(adjusted_values_checked, grid_shape))
-
-    # 6. Store both datasets in a netCDF
+    # 6. Store the datasets in a netCDF
     store_as_netcdf(
-        gridded_array=np.array(adjustment_factor_out),
+        gridded_arrays={
+            "multiplier": np.array(multiplicative_error_out),
+            "additive": np.array(additive_error_out),
+        },
         dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
-        variable_name="adjustment_factor",
         outfile=os.path.join(work_dir, "FromModel", "adjustment_factors_gridded_rainfall.nc"),
     )
     store_as_netcdf(
-        gridded_array=np.array(adjusted_grid_out),
+        gridded_arrays={"P": np.array(adjusted_grid_out)},
         dataset_example=xr.open_dataset(os.path.join(work_dir, "ToModel", "gridded_rainfall.nc")),
-        variable_name="P",
         outfile=os.path.join(work_dir, "FromModel", "adjusted_gridded_rainfall.nc"),
     )
     logger.info("Adjusted gridded rainfall stored to a netCDF.")
@@ -307,7 +397,7 @@ def apply_quantile_mapping(
 
         # Post-process the correction factors
         corrections = corrections.to_dataset(dim="variable")
-        corrections = corrections.rename({0: "adjustment_factor", 1: "P"})
+        corrections = corrections.rename({0: "multiplier", 1: "P"})
         corrections = corrections.swap_dims({"step": "valid_time"})
         corrections = corrections.rename({"valid_time": "time"})
 

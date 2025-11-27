@@ -18,6 +18,7 @@ import numpy.typing as npt
 import skgstat as skg
 import wradlib as wrl
 
+from functions import wradlib_adjust_utils
 from utils.utils import get_rawatobs, get_interpolation_method
 
 
@@ -57,19 +58,30 @@ def apply_adjustment(
     adjusted_values: ndarray(float)
         The adjusted gridded rainfall values in the same shape as
         grid_values.
+    multiplicative_error : ndarray(float)
+        array of multiplicative adjustment factor
+    additive_error : ndarray(float)
+        array of additive adjustment factors
     """
     if config_xml["adjustment_method"] == "KED":
-        return __kriging_adjustment(
-            config_xml=config_xml,
-            obs_coords=obs_coords,
-            obs_values=obs_values,
-            grid_coords=grid_coords,
-            grid_values=grid_values,
-            logger=logger,
+        return (
+            __kriging_adjustment(
+                config_xml=config_xml,
+                obs_coords=obs_coords,
+                obs_values=obs_values,
+                grid_coords=grid_coords,
+                grid_values=grid_values,
+                logger=logger,
+            ),
+            None,
+            None,
         )
     else:
         adjuster = __obtain_adjustment_method(
-            config_xml=config_xml, obs_coords=obs_coords, grid_coords=grid_coords, logger=logger
+            config_xml=config_xml,
+            obs_coords=obs_coords,
+            grid_coords=grid_coords,
+            logger=logger,
         )
         return adjuster(obs_values, grid_values)
 
@@ -156,7 +168,7 @@ def __obtain_adjustment_method(
     interpolation_method = get_interpolation_method(config_xml, logger=logger)
 
     if adjustment_method == "MFB":
-        return wrl.adjust.AdjustMFB(
+        return wradlib_adjust_utils.AdjustMFB(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
             nnear_raws=config_xml["nearest_cells_to_use"],
@@ -164,35 +176,39 @@ def __obtain_adjustment_method(
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
             mfb_args={"method": "median"},
+            max_change_factor=config_xml["max_change_factor"],
         )
     elif adjustment_method == "Additive":
-        return wrl.adjust.AdjustBase(
+        return wradlib_adjust_utils.AdjustAdd(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
             nnear_raws=config_xml["nearest_cells_to_use"],
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            max_change_factor=config_xml["max_change_factor"],
             ipclass=interpolation_method,
         )
     elif adjustment_method == "Multiplicative":
-        return wrl.adjust.AdjustMultiply(
+        return wradlib_adjust_utils.AdjustMultiply(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
             nnear_raws=config_xml["nearest_cells_to_use"],
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            max_change_factor=config_xml["max_change_factor"],
             ipclass=interpolation_method,
         )
     elif adjustment_method == "Mixed":
-        return wrl.adjust.AdjustMixed(
+        return wradlib_adjust_utils.AdjustMixed(
             obs_coords=obs_coords,
             raw_coords=grid_coords,
             nnear_raws=config_xml["nearest_cells_to_use"],
             stat=config_xml["statistical_function"],
             mingages=config_xml["min_gauges"],
             minval=config_xml["threshold"],
+            max_change_factor=config_xml["max_change_factor"],
             ipclass=interpolation_method,
         )
     else:
