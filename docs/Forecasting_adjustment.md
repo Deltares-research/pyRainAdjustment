@@ -27,6 +27,8 @@ Examples of how to configure these options in Delft-FEWS are provided in the fol
 
 The output of the hindcasting adjusmtent procedure is one netCDF file, which is placed in the `FromModel` folder and can be directly read by Delft-FEWS. This netCDF (`corrected_forecast.nc`) contains the `multiplier` adjustment variable and the adjusted rainfall field variable (`P`). 
 
+In addition, more information and a schematic of how pyRainAdjustment interacts with Delft-FEWS can be found in the [Delft-FEWS public wiki page of pyRainAdjusment](https://publicwiki.deltares.nl/spaces/FEWSDOC/pages/366444650/Correction+methods+in+forecasting+mode). 
+
 ## References
 Cannon, Alex J., Stephen R. Sobie, and Trevor Q. Murdock. ‘Bias Correction of GCM Precipitation by Quantile Mapping: How Well Do Methods Preserve Changes in Quantiles and Extremes?’, 1 September 2015. https://doi.org/10.1175/JCLI-D-14-00754.1.
 
