@@ -6,6 +6,10 @@ pyRainAdjustment offers the following tools:
 - Gridded rainfall adjustment in a hindcasting mode. For this, the following methods can be used: mean field bias adjustments, additive, multiplicative and mixed error model correction, and kriging with external drift adjustment.
 - Gridded rainfall adjustment in a forecasting mode through quantile mapping.
 
+<img width="1329" height="594" alt="image" src="https://github.com/user-attachments/assets/cac343f2-d8ab-4847-8158-3d8a2cb83aa1" />
+
+This github page provides the source code of pyRainAdjustment, which can be used as a stand-alone module and as a module in your own Delft-FEWS configuration. The description of pyRainAdjustment, what you can do with it and how to install and configure it, are described in the documentation of this github page: [/docs/Introduction.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Introduction.md). See ["How to use pyRainAdjustment"](https://github.com/Deltares-research/pyRainAdjustment?tab=readme-ov-file#how-to-use-pyrainadjustment) for more information and to assist you in navigating to the right pages on this github. In addition, the Delft-FEWS public wiki page has [a specific page for pyRainAdjustment](https://publicwiki.deltares.nl/pages/viewpage.action?pageId=356778825&spaceKey=FEWSDOC&title=pyRainAdjustment) where the interaction of this Python tool with Delft-FEWS is elaborated on. On top of that, the Delft-FEWS wiki page can assists you in configuring your Delft-FEWS system and ensuring that pyRainAdjustment works seamlessly in your environment.
+
 ## Installation
 
 Make sure you have a Python package manager, such as mamba, micromamba or miniforge. 
