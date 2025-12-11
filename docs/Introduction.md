@@ -1,6 +1,8 @@
 # Introduction
 pyRainAdjustment is an open-source Python toolset to downscale and correct gridded rainfall products using rain gauges. This tool interacts with Delft-FEWS and takes as input a netCDF of gridded rainfall (or other meteorological) product and one or multiple netCDF(s) containing the rain gauge information. It returns a field of correction factors as a netCDF that can be read by Delft-FEWS.
 
+<img width="1329" height="594" alt="image" src="https://github.com/user-attachments/assets/44030acb-7871-4729-ab4a-31bae2296074" />
+
 pyRainAdjustment uses the wradlib Python package (Heistermann et al., 2013) as backbone. The tool uses a gridded precipitation dataset (hindcast or forecast) in netCDF format as input together with the rain gauge data (netCDF format containing all available gauges; only in hindcasting mode) and a configuration file, which can easily be exported and called through Delft-FEWS. The spatial grid projection (e.g., WGS84 or Lambert, etc.) does not matter, as long as the projection, latitude and longitude values are defined in the exported netCDF (this automatically happens through Delft-FEWS). 
 
 Based on the requested configuration, either downscaling, hindcasting corrections (MFB, additive, multiplicative, mixed or KED adjustments) or forecasting (quantile mapping) corrections are applied. In the case of quantile mapping, the statistics can (1) either be derived from a historical dataset or (2) applied when already derived and when a forecast is available in real time. Based on the requested functionality, pyRainAdjustment will apply the downscaling or adjustment and returns the downscaled/adjusted gridded precipitation together with the adjustment factor when adjustment has taken place.
@@ -17,6 +19,8 @@ Example of the search function to find the corresponding grid cell(s) for a prov
 
 ## Navigating through the rest of the documentation
 A background on the various options and methods in pyRainAdjustment is provided under: [/docs/Downscaling.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Downscaling.md) for the downscaling method, [/docs/Hindcasting_adjustments.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Hindcasting_adjustment.md) for the adjustment methods in hindcasting mode and [/docs/Forecasting_adjustment.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/docs/Forecasting_adjustment.md) for the adjustment methods in forecasting mode. Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md).
+
+For more information on the integration of pyRainAdjustment in your Delft-FEWS environment and for Delft-FEWS in particular, visit the [Delft-FEWS wiki page of pyRainAdjustment](https://publicwiki.deltares.nl/pages/viewpage.action?pageId=356778825&spaceKey=FEWSDOC&title=pyRainAdjustment).
 
 ## References
 Heistermann, M., S. Jacobi, and T. Pfaff. ‘Technical Note: An Open Source Library for Processing Weather Radar Data (Wradlib)’. Hydrology and Earth System Sciences 17, no. 2 (28 February 2013): 863–71. https://doi.org/10.5194/hess-17-863-2013.
