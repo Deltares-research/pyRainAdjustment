@@ -131,6 +131,8 @@ $$
 
 The other netCDF (`adjusted_gridded_rainfall.nc`) contains the adjusted rainfall field with variable `P`. 
 
+In addition, more information and a schematic of how pyRainAdjustment interacts with Delft-FEWS can be found in the [Delft-FEWS public wiki page of pyRainAdjusment](https://publicwiki.deltares.nl/spaces/FEWSDOC/pages/366444647/Gauge+adjustment+methods+in+hindcasting+mode). 
+
 ## Functionality to smooth two grid extents
 In most operational cases, rain gauges for the adjustment procedure only have a high density in one part of the grid domain, or the grid domain is simply much larger than the management region (e.g. with radar or satellite). In such cases, an advanced spatial adjustment procedure is not feasible for the entire grid, but one may be interested in applying it to a smaller inset of the grid. In such cases, pyRainAdjustment provides a functionality to use an MFB adjustment background grid around a smaller extent in which any adjustment procedure can be applied. Hence. this functionality lets a central grid slowly smoothly transition into a larger outside grid, based on a predefined `smooth_edge_values_range` that can be set in the `config_xml`. The functionality uses this distance (in grid cells) from each edge to fully fill with the larger MFB-adjusted grid around it. At the transition between the two grids, a smoothing between the two grid values is applied over the same distance as configured in `smooth_edge_values_range`, but working inwards from the newly set edges of the smaller extent.
 
