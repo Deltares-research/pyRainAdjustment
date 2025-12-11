@@ -20,7 +20,7 @@ Example of climatology-based downscaling of daily ERA5 reanalysis data over Sout
 ## Usage in Delft-FEWS
 Examples of how to configure these options in Delft-FEWS are provided in the folder `config` and this is further explained in [/config/README.md](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/README.md). For downscaling, have a look at [/config/ModuleConfigFiles/ProcessRainDownscaling.xml](https://github.com/Deltares-research/pyRainAdjustment/tree/main/config/ModuleConfigFiles/ProcessRainDownscaling).
 
-In addition, more information can also be found in the [Delft-FEWS public wiki page of pyRainAdjusment](https://publicwiki.deltares.nl/spaces/FEWSDOC/pages/366444645/Climatology-based+downscaling+of+precipitation+fields). 
+In addition, more information and a schematic of how pyRainAdjustment interacts with Delft-FEWS can be found in the [Delft-FEWS public wiki page of pyRainAdjusment](https://publicwiki.deltares.nl/spaces/FEWSDOC/pages/366444645/Climatology-based+downscaling+of+precipitation+fields). 
 
 ## References
 Fick, Stephen E., and Robert J. Hijmans. ‘WorldClim 2: New 1-Km Spatial Resolution Climate Surfaces for Global Land Areas’. International Journal of Climatology 37, no. 12 (2017): 4302–15. https://doi.org/10.1002/joc.5086.
